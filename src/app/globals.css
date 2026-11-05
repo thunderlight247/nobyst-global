@@ -1,0 +1,7 @@
+@tailwind base; @tailwind components; @tailwind utilities;
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+body { background: #F5F6FB; color: #0A1550; font-family: var(--font-body), sans-serif; }
+:focus-visible { outline: 3px solid #E8AE0C; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
