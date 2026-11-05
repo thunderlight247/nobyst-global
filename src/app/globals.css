@@ -1,7 +1,67 @@
-@tailwind base; @tailwind components; @tailwind utilities;
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-.lenis.lenis-stopped { overflow: hidden; }
-body { background: #F5F6FB; color: #0A1550; font-family: var(--font-body), sans-serif; }
-:focus-visible { outline: 3px solid #E8AE0C; outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Bricolage Grotesque", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Craft Floor: Browser surfaces themed from brand palette */
+::selection {
+  background-color: #E8AE0C;
+  color: #0A1550;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F6FB;
+}
+::-webkit-scrollbar-thumb {
+  background: #101F78;
+  border-radius: 5px;
+  border: 2px solid #F5F6FB;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0A1550;
+}
+
+html.lenis, html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+body {
+  background: #F5F6FB;
+  color: #0A1550;
+  font-family: var(--font-body), system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus indicator WCAG 2.2 AA compliant */
+:focus-visible {
+  outline: 3px solid #E8AE0C;
+  outline-offset: 3px;
+}
+
+/* Reduced motion honoring user accessibility preference while retaining state feedback */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
