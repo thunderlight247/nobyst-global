@@ -4,34 +4,39 @@ import { site, nav } from "@/data/site";
 
 export default function Footer() {
   return (
-    <footer className="mt-20 sm:mt-28 bg-navy text-white border-t border-navy-700">
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 sm:px-6 lg:px-8 py-16 md:grid-cols-3">
+    <footer className="mt-14 border-t border-navy-700 bg-navy text-white sm:mt-24">
+      <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 sm:gap-10 sm:px-6 sm:py-16 md:grid-cols-3 lg:px-8">
         <div>
-          <div className="inline-block rounded-xl bg-white p-2.5 shadow-sm">
+          <Link
+            href="/"
+            aria-label="NOBYST GLOBAL LTD — home"
+            className="inline-flex items-center gap-3 rounded-md"
+          >
             <Image
-              src="/logo.jpg"
-              alt="NOBYST GLOBAL LTD logo"
-              width={96}
-              height={64}
-              className="h-12 w-auto object-contain"
+              src="/logo-mark-light.png"
+              alt=""
+              width={86}
+              height={55}
+              className="h-11 w-auto"
             />
-          </div>
-          <p className="mt-4 max-w-xs text-sm text-white/80 leading-relaxed">
-            {site.name} · {site.tagline}. Based in {site.location}.
+            <span className="flex flex-col leading-none">
+              <span className="font-display text-lg font-extrabold tracking-tight">NOBYST</span>
+              <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-gold">
+                Global Ltd
+              </span>
+            </span>
+          </Link>
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/75">
+            {site.positioning}
           </p>
         </div>
 
         <nav aria-label="Footer navigation">
-          <p className="text-xs font-bold uppercase tracking-wider text-gold mb-4">
-            Navigation
-          </p>
+          <p className="mb-4 text-xs font-bold uppercase tracking-wider text-gold">Navigation</p>
           <ul className="space-y-2.5 text-sm">
             {nav.map((n) => (
               <li key={n.href}>
-                <Link
-                  className="text-white/80 transition-colors hover:text-gold"
-                  href={n.href}
-                >
+                <Link className="text-white/75 transition-colors hover:text-gold" href={n.href}>
                   {n.label}
                 </Link>
               </li>
@@ -40,20 +45,15 @@ export default function Footer() {
         </nav>
 
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-gold mb-4">
-            Contact & Location
-          </p>
-          <address className="space-y-2.5 text-sm not-italic text-white/80">
-            <p className="text-white/90 font-medium">{site.location}</p>
-            <a
-              className="block transition-colors hover:text-gold"
-              href={`mailto:${site.email}`}
-            >
+          <p className="mb-4 text-xs font-bold uppercase tracking-wider text-gold">Contact & location</p>
+          <address className="space-y-2.5 text-sm not-italic text-white/75">
+            <p className="font-medium text-white/90">{site.region}</p>
+            <a className="block transition-colors hover:text-gold" href={`mailto:${site.email}`}>
               {site.email}
             </a>
             <a
               className="block transition-colors hover:text-gold"
-              href={`tel:${site.phone.replace(/\s/g, "")}`}
+              href={`tel:${site.phone.replace(/[^\d+]/g, "")}`}
             >
               {site.phone}
             </a>
@@ -63,15 +63,15 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Direct WhatsApp Support →
+              Direct WhatsApp support →
             </a>
           </address>
         </div>
       </div>
 
-      <div className="border-t border-white/10 py-6 px-5 text-center text-xs text-white/70">
+      <div className="border-t border-white/10 px-5 py-5 text-center text-xs text-white/60">
         <p>
-          © {new Date().getFullYear()} {site.name}. All rights reserved. Product and catalog items shown are illustrative.
+          © {new Date().getFullYear()} {site.name}. All rights reserved.
         </p>
       </div>
     </footer>

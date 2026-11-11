@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nobyst-global",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nobyst-catalog",
+      // Replace with the id printed by: npx wrangler d1 create nobyst-catalog
+      "database_id": "1ce53859-0e99-4994-9dcf-bd2db48097bb"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "nobyst-media"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

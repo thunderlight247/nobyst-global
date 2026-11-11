@@ -1,21 +1,55 @@
-// Illustrative Unsplash stock photos (https://unsplash.com/license). NOT photos of NOBYST.
-// Replace any `src` with a local file in /public (e.g. "/images/shop.jpg") when real photos exist.
-const u = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=70`;
+// Local illustrative photography (Pexels licence). These are not photos of NOBYST premises.
 export const images = {
-  phones: { src: u("photo-1511707171634-5f897ff02aa9"), alt: "Smartphone held in hand (stock photo)" },
-  retail: { src: u("photo-1556740738-b6a63e27c4df"), alt: "Retail counter and payment (stock photo)" },
-  payments: { src: u("photo-1556742049-0cfed4f6a45d"), alt: "Card and mobile payment (stock photo)" },
-  logistics: { src: u("photo-1586528116311-ad8dd3c8310d"), alt: "Warehouse and distribution (stock photo)" },
-  agriculture: { src: u("photo-1500382017468-9049fed747ef"), alt: "Farmland (stock photo)" },
-  technology: { src: u("photo-1518770660439-4636190af475"), alt: "Circuit board technology (stock photo)" },
-  team: { src: u("photo-1521737604893-d14cc237f11d"), alt: "Business team meeting (stock photo)" },
-};
+  accessories: {
+    src: "/images/accessories.jpg",
+    alt: "Phone chargers, a cable and a clear phone case laid out for display",
+  },
+  phoneDetail: {
+    src: "/images/phone-detail.jpg",
+    alt: "Smartphone connected to a charging cable",
+  },
+  payments: {
+    src: "/images/payments.jpg",
+    alt: "Hand holding a smartphone during a digital payment",
+  },
+  team: {
+    src: "/images/team.jpg",
+    alt: "Business team reviewing plans around a meeting table",
+  },
+
+  // Product photography — one distinct image per catalogue line.
+  usbCable: {
+    src: "/images/products/usb-cable.jpg",
+    alt: "Braided USB-C charging cable with a metal connector on a marble surface",
+  },
+  wallCharger: {
+    src: "/images/products/wall-charger.jpg",
+    alt: "White wall charger adapter standing on a dark surface",
+  },
+  powerBank: {
+    src: "/images/products/power-bank.jpg",
+    alt: "Smartphone charging from a portable power bank via an orange cable",
+  },
+  wiredEarphones: {
+    src: "/images/products/wired-earphones.jpg",
+    alt: "White wired earphones resting on sheet music",
+  },
+  wirelessEarbuds: {
+    src: "/images/products/wireless-earbuds.jpg",
+    alt: "Black wireless earbuds in an open charging case",
+  },
+  phoneCase: {
+    src: "/images/products/phone-case.jpg",
+    alt: "Clear protective phone case on a light background",
+  },
+  screenGuard: {
+    src: "/images/products/screen-guard.jpg",
+    alt: "Hand holding a tempered glass screen protector beside a smartphone",
+  },
+  phoneStand: {
+    src: "/images/products/phone-stand.jpg",
+    alt: "Smartphone mounted on an adjustable desk stand",
+  },
+} as const;
+
 export type ImageKey = keyof typeof images;
-export const categoryImage: Record<string, ImageKey> = {
-  "Chargers & cables": "technology",
-  "Power banks": "phones",
-  "Earphones & audio": "phones",
-  "Phone cases & screen guards": "phones",
-  "Holders & stands": "retail",
-};
-export const imageCredits = "All photos are Unsplash stock images used for illustration only; record photographer credits here when final photos are chosen.";

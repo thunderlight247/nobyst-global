@@ -8,90 +8,93 @@ import type { ImageKey } from "@/data/images";
 
 export const metadata: Metadata = {
   title: "Our Businesses",
-  description: "What NOBYST GLOBAL LTD does today, and the business areas it plans to grow into.",
+  description:
+    "The two divisions NOBYST GLOBAL LTD operates today in Techiman, Ghana, and the business areas planned for future expansion.",
 };
-
-const momoPoints = [
-  "Agency services for everyday cash and digital transactions",
-  "Served directly from our commercial location in Techiman, Ghana",
-  "Transaction types and network partner institutions confirmed at point of service",
-];
 
 export default function Businesses() {
   return (
     <>
-      <section className="mx-auto max-w-6xl px-5 sm:px-6 lg:px-8 py-16 sm:py-24">
+      <section className="mx-auto max-w-6xl px-5 py-12 sm:px-6 sm:py-20 lg:px-8">
         <div className="max-w-3xl">
-          <span className="inline-block rounded-full bg-royal-100 px-3.5 py-1 text-xs font-bold text-royal uppercase tracking-wider">
-            Commercial Portfolio
+          <span className="inline-block rounded-full bg-royal-100 px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-royal sm:text-xs">
+            Commercial portfolio
           </span>
-          <h1 className="mt-4 font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-navy">
+          <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-navy sm:text-5xl">
             Our businesses
           </h1>
-          <p className="mt-4 text-base sm:text-lg text-navy/80 leading-relaxed text-pretty">
-            Active commercial operations serving our local market today, paired with structured strategic initiatives for future regional growth.
+          <p className="mt-4 text-sm leading-relaxed text-navy/75 text-pretty sm:text-lg">
+            Two divisions operating today in Techiman, and a clearly separated pipeline of sectors we
+            plan to enter as the company grows.
           </p>
         </div>
 
-        {/* Operating Today */}
-        <div className="mt-14">
+        {/* Operating today */}
+        <div className="mt-10 sm:mt-14">
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-royal-100 text-royal">
-              <CheckCircle2 size={18} aria-hidden />
+              <CheckCircle2 size={16} aria-hidden />
             </span>
-            <h2 className="font-display text-2xl sm:text-3xl font-bold text-navy">
-              Operating today
-            </h2>
+            <h2 className="font-display text-2xl font-bold text-navy sm:text-3xl">Operating today</h2>
           </div>
+          <p className="mt-2 max-w-2xl text-sm text-navy/70">
+            These divisions are open and serving customers now.
+          </p>
 
-          <div className="mt-8 space-y-8">
+          <div className="mt-7 space-y-6 sm:mt-8 sm:space-y-8">
             {current.map((c, i) => (
               <article
                 key={c.title}
-                className="group grid overflow-hidden rounded-2xl border border-navy/10 bg-white shadow-sm transition-all duration-300 hover:border-royal/30 hover:shadow-xl md:grid-cols-2"
+                id={i === 1 ? "agency" : undefined}
+                className="group grid scroll-mt-24 overflow-hidden rounded-2xl border border-navy/10 bg-white shadow-sm transition-all duration-300 hover:border-royal/30 hover:shadow-xl md:grid-cols-2"
               >
-                <div className={`relative h-64 sm:h-72 md:h-full overflow-hidden bg-royal-100 ${i % 2 ? "md:order-2" : ""}`}>
+                <div
+                  className={`relative h-52 overflow-hidden bg-royal-100 sm:h-64 md:h-full ${
+                    i % 2 ? "md:order-2" : ""
+                  }`}
+                >
                   <SmartImage
                     name={c.image as ImageKey}
                     className="h-full w-full"
                     imgClassName="transition-transform duration-700 ease-out group-hover:scale-105"
+                    sizes="(min-width:768px) 50vw, 100vw"
                   />
-                  <div className="absolute left-4 top-4 rounded-full bg-white/90 backdrop-blur-md px-3 py-1 text-xs font-bold text-navy shadow-sm">
-                    {i === 0 ? "Retail Division" : "Agency Banking"}
+                  <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-navy shadow-sm backdrop-blur-md">
+                    {c.tag}
                   </div>
                 </div>
 
-                <div className="p-8 sm:p-10 flex flex-col justify-between">
+                <div className="flex flex-col justify-between p-6 sm:p-8 lg:p-10">
                   <div>
-                    <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-royal text-white shadow-sm transition-transform duration-300 group-hover:scale-110">
-                      <Icon name={c.icon} />
+                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-royal text-white shadow-sm transition-transform duration-300 group-hover:scale-110">
+                      <Icon name={c.icon} size={22} />
                     </span>
-                    <h3 className="mt-5 font-display text-2xl font-bold text-navy group-hover:text-royal transition-colors">
+                    <h3 className="mt-4 font-display text-xl font-bold text-navy transition-colors group-hover:text-royal sm:text-2xl">
                       {c.title}
                     </h3>
-                    <p className="mt-3 text-base text-navy/80 leading-relaxed text-pretty">
-                      {c.text}
-                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-navy/75 sm:text-base">{c.text}</p>
 
-                    {i === 1 && (
-                      <ul className="mt-5 space-y-2 rounded-xl bg-paper p-4 text-sm text-navy/85">
-                        {momoPoints.map((m) => (
-                          <li key={m} className="flex items-start gap-2">
-                            <span className="text-royal font-bold">•</span>
-                            <span>{m}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <ul className="mt-4 space-y-2 rounded-xl bg-paper p-4 text-sm text-navy/80">
+                      {c.points.map((m) => (
+                        <li key={m} className="flex items-start gap-2">
+                          <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
+                          <span>{m}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
-                  <div className="mt-8 pt-4 border-t border-navy/5">
+                  <div className="mt-6 border-t border-navy/5 pt-4">
                     <Link
-                      href={i === 0 ? "/products" : "/contact"}
-                      className="group/link inline-flex items-center gap-2 font-bold text-royal hover:text-navy transition-colors"
+                      href={c.href}
+                      className="group/link inline-flex items-center gap-2 text-sm font-bold text-royal transition-colors hover:text-navy"
                     >
-                      <span>{i === 0 ? "Browse accessories catalog" : "Inquire about agency services"}</span>
-                      <ArrowRight size={16} aria-hidden className="transition-transform duration-200 group-hover/link:translate-x-1" />
+                      <span>{c.cta}</span>
+                      <ArrowRight
+                        size={16}
+                        aria-hidden
+                        className="transition-transform duration-200 group-hover/link:translate-x-1"
+                      />
                     </Link>
                   </div>
                 </div>
@@ -101,51 +104,46 @@ export default function Businesses() {
         </div>
       </section>
 
-      {/* Future Expansion Roadmap */}
-      <section className="mx-auto max-w-6xl px-5 sm:px-6 lg:px-8 pb-20 sm:pb-28">
-        <div className="rounded-3xl border border-gold/40 bg-gradient-to-br from-[#FAF8F0] via-white to-[#F2F5FD] p-6 sm:p-10 lg:p-12 shadow-sm">
-          <div className="inline-flex items-center gap-2 rounded-full border border-gold-600/30 bg-gold/15 px-3.5 py-1 text-xs font-bold text-gold-600 uppercase tracking-wider">
-            <Hourglass size={14} aria-hidden />
-            <span>Planned Strategic Pipeline</span>
+      {/* Planned expansion */}
+      <section className="mx-auto max-w-6xl px-5 pb-14 sm:px-6 sm:pb-24 lg:px-8">
+        <div className="rounded-3xl border border-gold/40 bg-gradient-to-br from-[#FAF8F0] via-white to-[#F2F5FD] p-6 shadow-sm sm:p-10 lg:p-12">
+          <div className="inline-flex items-center gap-2 rounded-full border border-gold-600/30 bg-gold/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600 sm:text-xs">
+            <Hourglass size={13} aria-hidden />
+            <span>Planned expansion — not operating today</span>
           </div>
 
-          <h2 className="mt-4 font-display text-3xl sm:text-4xl font-bold tracking-tight text-navy">
+          <h2 className="mt-4 font-display text-2xl font-bold tracking-tight text-navy sm:text-4xl">
             Future growth areas
           </h2>
-          <p className="mt-3 max-w-2xl text-base sm:text-lg text-navy/80 leading-relaxed text-pretty">
-            These represent strategic diversification ambitions mapped for phased expansion as infrastructure and market partnerships mature.
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-navy/75 sm:text-base">
+            These are strategic diversification plans, not current services. Each area will be
+            introduced in phases as capabilities, partners and market conditions allow.
           </p>
 
-          <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-7 grid gap-4 sm:mt-9 sm:grid-cols-2 lg:grid-cols-3">
             {future.map((f) => (
               <li
                 key={f.title}
-                className="group overflow-hidden rounded-xl border border-navy/10 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-gold hover:shadow-md"
+                className="group rounded-xl border border-navy/10 bg-white/85 p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-gold hover:shadow-md"
               >
-                <div className="relative h-36 w-full overflow-hidden bg-royal-100/50">
-                  <SmartImage
-                    name={f.image as ImageKey}
-                    className="h-full w-full"
-                    imgClassName="transition-transform duration-500 ease-out group-hover:scale-105"
-                    sizes="(min-width:1024px) 33vw, 100vw"
-                  />
-                </div>
-                <div className="flex items-center gap-3 p-4">
+                <div className="flex items-start justify-between gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold-100 text-gold-600 transition-colors group-hover:bg-gold group-hover:text-navy">
-                    <Icon name={f.icon} />
+                    <Icon name={f.icon} size={18} />
                   </span>
-                  <span className="text-sm font-bold text-navy group-hover:text-royal transition-colors">
-                    {f.title}
+                  <span className="rounded-full border border-gold-600/25 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gold-600">
+                    Planned
                   </span>
                 </div>
+                <h3 className="mt-3 font-display text-base font-bold text-navy">{f.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-navy/70">{f.text}</p>
               </li>
             ))}
           </ul>
 
-          <div className="mt-10">
+          <div className="mt-8">
             <Link
               href="/partnerships"
-              className="inline-flex items-center gap-2 rounded-full bg-navy px-7 py-3.5 font-bold text-white shadow-md transition-all duration-200 hover:bg-royal hover:shadow-xl active:scale-[0.98]"
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-royal hover:shadow-xl active:scale-[0.98] sm:text-base"
             >
               <span>Explore a commercial partnership</span>
               <ArrowRight size={18} aria-hidden />

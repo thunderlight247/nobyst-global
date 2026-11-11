@@ -7,11 +7,13 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 export default function Reveal({
   children,
   className = "",
+  as = "div",
 }: {
   children: React.ReactNode;
   className?: string;
+  as?: "div" | "ul" | "dl";
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !ref.current) return;
@@ -44,9 +46,10 @@ export default function Reveal({
     return () => ctx.revert();
   }, []);
 
+  const Tag = as;
   return (
-    <div ref={ref} className={className}>
+    <Tag ref={ref as React.RefObject<never>} className={className}>
       {children}
-    </div>
+    </Tag>
   );
 }

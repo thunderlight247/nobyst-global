@@ -9,16 +9,36 @@ import WhatsAppFloat from "@/components/WhatsAppFloat";
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: { default: `${site.name} | ${site.tagline}`, template: `%s | ${site.name}` },
-  description: "Phone accessories and mobile money agency services in Techiman, Ghana. A growing Ghanaian enterprise built on trust, solutions, growth and people.",
-  openGraph: { title: site.name, description: site.tagline, type: "website", images: ["/logo.jpg"] },
-  icons: { icon: "/logo.jpg" },
+  description:
+    "NOBYST GLOBAL LTD is a Ghanaian enterprise in Techiman operating phone accessories retail and mobile money agency services, with planned expansion into trading, distribution, agriculture, technology and logistics.",
+  openGraph: {
+    title: `${site.name} — ${site.tagline}`,
+    description: site.positioning,
+    url: site.url,
+    siteName: site.name,
+    type: "website",
+    locale: "en_GH",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: `${site.name} — ${site.tagline}` }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${site.name} — ${site.tagline}`,
+    description: site.positioning,
+    images: ["/og.png"],
+  },
+  icons: { icon: [{ url: "/icon.png", type: "image/png" }], apple: "/icon.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded focus:bg-white focus:px-4 focus:py-2">Skip to content</a>
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded focus:bg-white focus:px-4 focus:py-2"
+        >
+          Skip to content
+        </a>
         <SmoothScroll>
           <Header />
           <main id="main">{children}</main>

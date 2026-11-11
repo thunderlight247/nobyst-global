@@ -4,12 +4,15 @@ export const site = {
   short: "NOBYST",
   tagline: "A Better Tomorrow",
   location: "Techiman, Ghana",
+  region: "Techiman, Bono East Region, Ghana",
   email: "info@nobyst.com",
   phone: "+233 50 106 8350",
   whatsapp: "233501068350", // digits only, for wa.me links
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://nobyst.com",
+  positioning:
+    "A Ghanaian enterprise based in Techiman, operating today in phone accessories retail and mobile money agency services, and building towards a diversified group.",
   intro:
-    "NOBYST GLOBAL LTD is a Ghanaian enterprise based in Techiman. We are building a trusted, diversified business, starting with phone accessories and related customer services, and pursuing sustainable growth in other industries.",
+    "NOBYST GLOBAL LTD is a Ghanaian enterprise based in Techiman. We operate phone accessories retail and mobile money agency services today, and we are preparing a measured expansion into trading, distribution, agriculture-related trade, technology and logistics.",
   mission:
     "Deliver dependable products and practical services that create value for customers and business partners, guided by trust, service and continuous improvement.",
   vision:
@@ -17,6 +20,7 @@ export const site = {
   philosophy:
     "We value lasting relationships, practical solutions, dependable service, continuous improvement and sustainable growth.",
 };
+
 export const nav = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
@@ -25,33 +29,99 @@ export const nav = [
   { href: "/partnerships", label: "Partner with us" },
   { href: "/contact", label: "Contact" },
 ];
+
 export const values = [
   { title: "Trust", text: "Honest dealings and dependable service, every time." },
   { title: "Solution", text: "Practical answers to real customer and partner needs." },
   { title: "Growth", text: "Continuous improvement and sustainable expansion." },
   { title: "People", text: "Lasting relationships with customers, partners and our team." },
 ];
+
+// Facts used on the About page. Keep these statements accurate.
+export const companyFacts = [
+  { label: "Legal name", value: "NOBYST GLOBAL LTD" },
+  { label: "Commercial base", value: "Techiman, Bono East Region, Ghana" },
+  { label: "Operating today", value: "Phone accessories retail and mobile money agency" },
+  { label: "Planned expansion", value: "Trading, import & export, agriculture, technology, logistics" },
+];
+
+// ACTIVE operations. These divisions are open today.
 export const current = [
-  { icon: "smartphone", image: "phones", title: "Phone accessories & retail", text: "Everyday phone accessories and related retail products for customers in Techiman and beyond." },
-  { icon: "wallet", image: "payments", title: "Mobile money & banking agency", text: "Convenient agency services for people and small businesses who need to move and manage money close to home." },
+  {
+    icon: "smartphone",
+    image: "accessories",
+    title: "Phone accessories & retail",
+    tag: "Retail division",
+    text: "Everyday phone accessories and related retail products for customers in Techiman and beyond.",
+    points: [
+      "Chargers, cables, power banks, audio and phone protection",
+      "Product guidance on fit and compatibility before you buy",
+      "Availability checks and follow-up through WhatsApp",
+    ],
+    href: "/products",
+    cta: "Browse the accessories catalogue",
+  },
+  {
+    icon: "wallet",
+    image: "payments",
+    title: "Mobile money & banking agency",
+    tag: "Agency services",
+    text: "Agency services that help individuals and small businesses move and manage money closer to home.",
+    points: [
+      "Agency services for everyday cash and digital transactions",
+      "Served from our commercial location in Techiman",
+      "Ask in store or on WhatsApp about the services available",
+    ],
+    href: "/businesses#agency",
+    cta: "View agency service details",
+  },
 ];
-// Planned, NOT operational. Shown separately on the site.
+
+// PLANNED, NOT OPERATIONAL. Shown separately everywhere on the site.
 export const future = [
-  { icon: "store", title: "General trading & distribution", image: "retail" },
-  { icon: "ship", title: "Import & export", image: "logistics" },
-  { icon: "sprout", title: "Agriculture-related trade", image: "agriculture" },
-  { icon: "cpu", title: "Technology services", image: "technology" },
-  { icon: "truck", title: "Logistics services", image: "logistics" },
+  {
+    icon: "store",
+    title: "General trading & distribution",
+    text: "Wholesale and retail distribution of fast-moving consumer goods and general merchandise.",
+  },
+  {
+    icon: "ship",
+    title: "Import & export",
+    text: "Sourcing and cross-border trade of quality goods into and out of Ghana.",
+  },
+  {
+    icon: "sprout",
+    title: "Agriculture-related trade",
+    text: "Aggregation and trade in agricultural produce, starting with cocoa and staple crops.",
+  },
+  {
+    icon: "cpu",
+    title: "Technology services",
+    text: "Digital services, device support and practical ICT solutions for small businesses.",
+  },
+  {
+    icon: "truck",
+    title: "Logistics services",
+    text: "Distribution, haulage and last-mile delivery support for our goods and partners.",
+  },
 ];
-export const categories = ["Chargers & cables", "Power banks", "Earphones & audio", "Phone cases & screen guards", "Holders & stands"] as const;
-// ILLUSTRATIVE SAMPLE ENTRIES. Replace with real inventory. No prices or stock are claimed.
-export const products = [
-  { id: "p1", name: "USB-C fast charging cable", category: "Chargers & cables", description: "Braided USB-C cable for charging and data. Sample entry." },
-  { id: "p2", name: "Wall charger adapter", category: "Chargers & cables", description: "Single-port wall adapter for everyday charging. Sample entry." },
-  { id: "p3", name: "Portable power bank", category: "Power banks", description: "Pocket power bank for on-the-go top-ups. Sample entry." },
-  { id: "p4", name: "Wired earphones", category: "Earphones & audio", description: "In-ear earphones with inline microphone. Sample entry." },
-  { id: "p5", name: "Wireless earbuds", category: "Earphones & audio", description: "Bluetooth earbuds with charging case. Sample entry." },
-  { id: "p6", name: "Protective phone case", category: "Phone cases & screen guards", description: "Shock-absorbing case; model fit to be confirmed. Sample entry." },
-  { id: "p7", name: "Tempered glass screen guard", category: "Phone cases & screen guards", description: "Scratch-resistant screen protection. Sample entry." },
-  { id: "p8", name: "Adjustable phone stand", category: "Holders & stands", description: "Desk stand for calls, video and viewing. Sample entry." },
-];
+
+export const categories = [
+  "Chargers & cables",
+  "Power banks",
+  "Earphones & audio",
+  "Phone cases & screen guards",
+  "Holders & stands",
+] as const;
+
+// Phone families customers can filter by. Keep these to broad, recognisable groups.
+export const phoneGroups = [
+  { id: "iphone-usbc", label: "iPhone 15 and newer" },
+  { id: "iphone-lightning", label: "iPhone 14 and earlier" },
+  { id: "samsung", label: "Samsung Galaxy" },
+  { id: "tecno-infinix-itel", label: "Tecno, Infinix & itel" },
+  { id: "usbc-android", label: "Other USB-C Android phones" },
+  { id: "micro-usb", label: "Older micro-USB phones" },
+] as const;
+
+export type PhoneGroupId = (typeof phoneGroups)[number]["id"];

@@ -2,18 +2,70 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 
-/** The one orchestrated moment: the logo's gold orbit draws itself behind the headline. */
+/** A restrained gold orbit that frames the hero snapshot panel instead of crossing the headline. */
 export default function HeroRing() {
-  const ref = useRef<SVGEllipseElement>(null);
+  const ref = useRef<SVGSVGElement>(null);
+
   useEffect(() => {
-    const el = ref.current; if (!el) return;
+    const svg = ref.current;
+    if (!svg) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const len = el.getTotalLength();
-    gsap.fromTo(el, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 2.2, ease: "power3.inOut", delay: 0.2 });
+
+    const paths = Array.from(svg.querySelectorAll<SVGGeometryElement>("[data-draw]"));
+    const timeline = gsap.timeline();
+    paths.forEach((p, i) => {
+      const len = p.getTotalLength();
+      gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
+      timeline.to(p, { strokeDashoffset: 0, duration: 1.6, ease: "power3.inOut" }, i * 0.18);
+    });
+
+    return () => {
+      timeline.kill();
+    };
   }, []);
+
   return (
-    <svg aria-hidden viewBox="0 0 800 400" className="pointer-events-none absolute -right-24 top-1/2 w-[140%] max-w-none -translate-y-1/2 -rotate-12 opacity-80 sm:w-[90%] lg:right-[-8%] lg:w-[70%]">
-      <ellipse ref={ref} cx="400" cy="200" rx="380" ry="120" fill="none" stroke="#E8AE0C" strokeWidth="10" strokeLinecap="round" />
+    <svg
+      ref={ref}
+      aria-hidden
+      viewBox="0 0 520 420"
+      fill="none"
+      className="pointer-events-none absolute -inset-x-7 -inset-y-6 h-[calc(100%+3rem)] w-[calc(100%+3.5rem)]"
+    >
+      <defs>
+        <linearGradient id="hero-orbit" x1="40" y1="380" x2="480" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#E8AE0C" stopOpacity="0" />
+          <stop offset="30%" stopColor="#F3C63F" stopOpacity="0.9" />
+          <stop offset="70%" stopColor="#E8AE0C" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#E8AE0C" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="hero-orbit-soft" x1="500" y1="380" x2="20" y2="60" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#E8AE0C" stopOpacity="0" />
+          <stop offset="45%" stopColor="#E8AE0C" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#E8AE0C" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <ellipse
+        data-draw
+        cx="260"
+        cy="210"
+        rx="212"
+        ry="176"
+        transform="rotate(-18 260 210)"
+        stroke="url(#hero-orbit)"
+        strokeWidth="2.2"
+      />
+      <ellipse
+        data-draw
+        cx="262"
+        cy="220"
+        rx="244"
+        ry="112"
+        transform="rotate(13 262 220)"
+        stroke="url(#hero-orbit-soft)"
+        strokeWidth="1.2"
+      />
+      <circle cx="452" cy="96" r="3" fill="#E8AE0C" opacity="0.8" />
     </svg>
   );
 }
