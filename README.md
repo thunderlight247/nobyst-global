@@ -57,9 +57,11 @@ the bindings (`DB` → D1, `MEDIA` → R2; worker name stays `nobyst-global`, so
 unchanged).
 
 1. **Create the D1 database** (dashboard → Storage & Databases → D1 → *Create*, name it
-   `nobyst-catalog`), then copy its **database ID** into `wrangler.jsonc` in place of the
-   `00000000-…` placeholder. Or from the terminal: `npx wrangler d1 create nobyst-catalog`.
-   (Done: `nobyst-catalog`, id `1ce53859-0e99-4994-9dcf-bd2db48097bb`; bucket `nobyst-media` created.)
+   `nobyst-catalog`), then copy its **database ID** into `wrangler.jsonc` in place of
+   `database_id`. Or from the terminal: `npx wrangler d1 create nobyst-catalog`.
+   The ID committed in `wrangler.jsonc` is the `nobyst-catalog` database of the current Cloudflare
+   account. If you move accounts again, replace it with the newly printed one, or every
+   `wrangler d1` command and deploy fails with *database not found*.
 2. **Create the R2 bucket** (dashboard → R2 → *Create bucket*, name it `nobyst-media`). R2 requires a
    one-time billing setup even on the free tier.
 3. **Create the tables and seed the catalogue.** Either paste the contents of `db/schema.sql` and then
@@ -69,11 +71,53 @@ unchanged).
         npx wrangler d1 execute nobyst-catalog --remote --file=./db/schema.sql
         npx wrangler d1 execute nobyst-catalog --remote --file=./db/seed.sql
 
-4. **Deploy:** `npm run deploy` (the same worker URL as today; existing pages and paths are preserved).
+4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is
+   unchanged; the `workers.dev` hostname follows the account's subdomain).
    This machine has broken IPv6, so the script forces
    `NODE_OPTIONS="--dns-result-order=ipv4first --no-network-family-autoselection"` for wrangler —
    leave it in place. Without the second flag Node tries IPv6 first and wrangler fails with
    `fetch failed` / `Not logged in: auth token could not be refreshed`.
+
+## Moving to a fresh Cloudflare account
+
+```
+npx wrangler logout && npx wrangler login      # sign in with the new account
+npx wrangler whoami                            # confirm the new Account ID
+export NODE_OPTIONS="--dns-result-order=ipv4first --no-network-family-autoselection"
+npx wrangler d1 create nobyst-catalog          # copy the id into wrangler.jsonc
+npx wrangler r2 bucket create nobyst-media
+npx wrangler d1 execute nobyst-catalog --remote --file=./db/schema.sql
+npx wrangler d1 execute nobyst-catalog --remote --file=./db/seed.sql
+npm run deploy
+```
+
+- A brand-new account has no `workers.dev` subdomain, and `wrangler deploy` stops with *You need to
+  register a workers.dev subdomain before publishing to workers.dev*. Register one at
+  `https://dash.cloudflare.com/<account-id>/workers/onboarding` (no config change needed), then
+  deploy again. R2 must also be enabled once per account: until then bucket commands fail with
+  *Please enable R2 through the Cloudflare Dashboard* (code 10042).
+- Worker names are per account, so the new deploy gets `nobyst-global.<new-subdomain>.workers.dev`.
+  Re-attach the custom domain (Workers → the worker → *Settings* → *Domains & Routes*) if you use one,
+  and set `NEXT_PUBLIC_SITE_URL` to the final hostname.
+- To carry over catalogue edits instead of reseeding, use a D1 export of the old database
+  (`npx wrangler d1 export nobyst-catalog --remote --output=db/backup.sql`) for the last `execute` step.
+- Local development is unaffected: `npm run db:init` / `npm run db:seed` use a local D1 copy in
+  `.wrangler/state`, with no account or login.
+
+### Deploying from GitHub (Workers Builds)
+
+When the repository is connected under Workers → *Settings* → *Builds*, both commands must use the
+OpenNext adapter:
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npx opennextjs-cloudflare build` |
+| Deploy command | `npx opennextjs-cloudflare deploy` |
+
+The default build command (`npm run build`) only runs `next build`, which leaves `.open-next` empty;
+the deploy step then fails with *Could not find compiled Open Next config, did you run the build
+command?*. Note that `wrangler.jsonc` on the deployed branch must carry the current account's
+`database_id`, or the build deploys against a database that does not exist.
 
 ## Deployment notes
 

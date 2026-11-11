@@ -13,7 +13,7 @@
       "binding": "DB",
       "database_name": "nobyst-catalog",
       // Replace with the id printed by: npx wrangler d1 create nobyst-catalog
-      "database_id": "1ce53859-0e99-4994-9dcf-bd2db48097bb"
+      "database_id": "305821fd-2277-4542-8294-ca8d5d9c9510"
     }
   ],
   "r2_buckets": [
