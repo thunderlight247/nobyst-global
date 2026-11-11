@@ -57,12 +57,12 @@ export default async function ProductPage({ params }: { params: { slug: string }
           <span className="inline-block rounded-full bg-gold/15 px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600">
             {product.category}
           </span>
-          <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">
+          <h1 className="mt-3 font-display text-2xl font-extrabold tracking-tight text-navy sm:mt-4 sm:text-4xl">
             {product.name}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-2.5">
             {price ? (
-              <p className="font-display text-2xl font-extrabold text-navy">{price}</p>
+              <p className="font-display text-xl font-extrabold text-navy sm:text-2xl">{price}</p>
             ) : (
               <p className="text-sm font-bold text-navy/70">Ask for price</p>
             )}
@@ -70,9 +70,9 @@ export default async function ProductPage({ params }: { params: { slug: string }
           </div>
           <p className="mt-3 text-sm leading-relaxed text-navy/75 sm:text-base">{product.description}</p>
 
-          <ul className="mt-6 space-y-2.5">
+          <ul className="mt-5 space-y-2.5 sm:mt-6">
             {product.features.map((f) => (
-              <li key={f} className="flex items-start gap-2.5 text-sm leading-relaxed text-navy/80">
+              <li key={f} className="flex items-start gap-2.5 text-xs leading-relaxed text-navy/80 sm:text-sm">
                 <Check className="mt-0.5 shrink-0 text-gold-600" size={16} aria-hidden />
                 <span>{f}</span>
               </li>
@@ -80,16 +80,16 @@ export default async function ProductPage({ params }: { params: { slug: string }
           </ul>
 
           {!isDevice && (
-            <div className="mt-7 rounded-2xl border border-navy/10 bg-white p-5 shadow-sm">
+            <div className="mt-6 rounded-2xl border border-navy/10 bg-white p-4 shadow-sm sm:mt-7 sm:p-5">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-royal">
                 <ShieldCheck size={14} aria-hidden />
                 <h2>Phone compatibility</h2>
               </div>
-              <ul className="mt-3 flex flex-wrap gap-2">
+              <ul className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
                 {fits.map((g) => (
                   <li
                     key={g.id}
-                    className="rounded-full border border-navy/10 bg-royal-50 px-3 py-1.5 text-xs font-medium text-navy/80"
+                    className="rounded-full border border-navy/10 bg-royal-50 px-2.5 py-1 text-xs font-medium text-navy/80 sm:px-3 sm:py-1.5"
                   >
                     {g.label}
                   </li>
@@ -109,14 +109,14 @@ export default async function ProductPage({ params }: { params: { slug: string }
               href={whatsappLink(
                 `Hello ${site.short}, I would like to check availability for: ${product.name}. My phone model is: `
               )}
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-royal"
+              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-royal active:scale-[0.98] sm:w-auto"
             >
               <MessageCircle size={17} aria-hidden />
               Check availability
             </a>
             <a
               href={`mailto:${site.email}?subject=${encodeURIComponent(`Availability: ${product.name}`)}`}
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full border border-navy/20 bg-white px-6 py-3 text-sm font-bold text-navy transition-colors hover:border-royal hover:text-royal"
+              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-navy/20 bg-white px-6 py-3 text-sm font-bold text-navy transition-colors hover:border-royal hover:text-royal active:scale-[0.98] sm:w-auto"
             >
               Email us
             </a>
@@ -127,15 +127,15 @@ export default async function ProductPage({ params }: { params: { slug: string }
         </div>
       </div>
 
-      <div className="mt-12 rounded-3xl border border-navy/10 bg-white p-6 shadow-lg sm:p-9">
-        <div className="grid gap-7 lg:grid-cols-2 lg:items-start lg:gap-10">
+      <div className="mt-10 rounded-2xl border border-navy/10 bg-white p-5 shadow-sm sm:mt-12 sm:rounded-3xl sm:p-9 sm:shadow-lg">
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
           <div>
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-royal">
               <Package size={15} aria-hidden />
               <span>Bulk &amp; wholesale</span>
             </div>
-            <h2 className="mt-3 font-display text-2xl font-bold text-navy">Ordering for a shop or team?</h2>
-            <p className="mt-2.5 text-sm leading-relaxed text-navy/75">
+            <h2 className="mt-2.5 font-display text-xl font-bold text-navy sm:mt-3 sm:text-2xl">Ordering for a shop or team?</h2>
+            <p className="mt-2 text-sm leading-relaxed text-navy/75">
               Tell us how many units you need and we will confirm bulk pricing, availability and
               collection or delivery in Techiman. Minimum bulk enquiry is 5 units.
             </p>
@@ -145,16 +145,16 @@ export default async function ProductPage({ params }: { params: { slug: string }
       </div>
 
       {related.length > 0 && (
-        <div className="mt-12">
+        <div className="mt-10 sm:mt-12">
           <h2 className="font-display text-xl font-bold text-navy sm:text-2xl">More in {product.category}</h2>
-          <ul className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((p) => (
               <li key={p.id}>
                 <Link
                   href={`/products/${p.slug}`}
                   className="group flex h-full flex-col overflow-hidden rounded-2xl border border-navy/10 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-royal/30 hover:shadow-md"
                 >
-                  <div className="relative h-36 w-full overflow-hidden bg-royal-100/50">
+                  <div className="relative aspect-[16/9] w-full overflow-hidden bg-royal-100/50 sm:h-36 sm:aspect-auto">
                     <Image
                       src={p.image}
                       alt={p.imageAlt}
@@ -163,9 +163,17 @@ export default async function ProductPage({ params }: { params: { slug: string }
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
-                  <div className="p-4">
+                  <div className="p-4 sm:p-5">
                     <p className="font-display font-bold text-navy group-hover:text-royal">{p.name}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-navy/65">{p.description}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-navy/65 sm:text-sm">{p.description}</p>
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-navy/5 pt-2">
+                      <span className="font-display text-xs font-bold text-navy sm:text-sm">
+                        {formatPrice(p.pricePesewas) ?? "Ask for price"}
+                      </span>
+                      <span className="text-xs font-bold text-royal group-hover:underline">
+                        Details &rarr;
+                      </span>
+                    </div>
                   </div>
                 </Link>
               </li>

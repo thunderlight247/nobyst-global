@@ -40,30 +40,28 @@ export default async function Products({
               <span className="inline-block rounded-full bg-navy px-3.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white sm:text-xs">
                 Retail division
               </span>
-              <h1 className="mt-5 font-display text-[2.1rem] font-extrabold leading-[1.05] tracking-tight text-navy sm:text-5xl lg:text-[3.5rem]">
-                Everyday tech,
-                <br />
-                ready to take home.
+              <h1 className="mt-5 font-display text-3xl font-extrabold leading-[1.08] tracking-tight text-navy text-balance sm:text-5xl lg:text-[3.5rem]">
+                Everyday tech,<br className="hidden sm:inline" /> ready to take home.
               </h1>
-              <p className="mt-5 max-w-xl text-sm leading-relaxed text-navy/70 text-pretty sm:text-lg">
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-navy/70 text-pretty sm:mt-5 sm:text-lg">
                 Phones, audio, charging, cases and the accessories that go with them. Message us on
                 WhatsApp to confirm stock, colours and model fit before you travel to us.
               </p>
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              <div className="mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row sm:items-center">
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
                   href={whatsappLink(
                     `Hello ${site.short}, I would like to ask about a product in your catalogue.`
                   )}
-                  className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-royal active:scale-[0.98] sm:text-base"
+                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-royal active:scale-[0.98] sm:w-auto sm:text-base"
                 >
                   <MessageCircle size={17} aria-hidden />
                   Ask about a product
                 </a>
                 <Link
                   href="#catalogue"
-                  className="inline-flex min-h-[48px] items-center gap-2 rounded-full border border-navy/20 bg-white px-6 py-3 text-sm font-bold text-navy transition-colors hover:border-navy sm:text-base"
+                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-navy/20 bg-white px-6 py-3 text-sm font-bold text-navy transition-colors hover:border-navy active:scale-[0.98] sm:w-auto sm:text-base"
                 >
                   Browse the catalogue
                 </Link>
@@ -121,12 +119,12 @@ export default async function Products({
             View all
           </Link>
         </div>
-        <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <ul className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
           {tiles.map((tile) => (
             <li key={tile.name}>
               <Link
                 href={`/products?category=${encodeURIComponent(tile.name)}`}
-                className="group flex h-full flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-neutral-200/70 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:ring-royal/25"
+                className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200/70 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:ring-royal/25 sm:rounded-3xl"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F1EFEA]">
                   {tile.image && (
@@ -139,15 +137,15 @@ export default async function Products({
                     />
                   )}
                 </div>
-                <div className="flex flex-1 items-center justify-between gap-2 p-4">
+                <div className="flex flex-1 items-center justify-between gap-1.5 p-3 sm:gap-2 sm:p-4">
                   <span className="min-w-0">
-                    <span className="block text-sm font-bold leading-tight text-navy">{tile.name}</span>
-                    <span className="mt-0.5 block text-[11px] text-navy/50">
+                    <span className="block text-xs font-bold leading-tight text-navy sm:text-sm">{tile.name}</span>
+                    <span className="mt-0.5 block text-[10px] text-navy/50 sm:text-[11px]">
                       {tile.count} {tile.count === 1 ? "line" : "lines"}
                     </span>
                   </span>
                   <ArrowRight
-                    size={15}
+                    size={14}
                     aria-hidden
                     className="shrink-0 text-navy/35 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-royal"
                   />

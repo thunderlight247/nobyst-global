@@ -95,7 +95,7 @@ export default function ProductBrowser({
         <div
           role="group"
           aria-label="Filter products by category"
-          className="flex flex-wrap gap-2 sm:gap-2.5"
+          className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 pt-0.5 no-scrollbar sm:mx-0 sm:flex-wrap sm:gap-2.5 sm:overflow-visible sm:px-0"
         >
           {["All", ...categories].map((c) => {
             const isSelected = cat === c;
@@ -105,7 +105,7 @@ export default function ProductBrowser({
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => setCat(c)}
-                className={`min-h-[44px] rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 active:scale-95 sm:px-5 sm:text-sm ${
+                className={`min-h-[44px] shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 active:scale-95 sm:px-5 sm:text-sm ${
                   isSelected
                     ? "bg-navy text-white shadow-md"
                     : "bg-white text-navy/70 ring-1 ring-neutral-200/80 hover:text-royal hover:ring-royal/40"
@@ -118,10 +118,21 @@ export default function ProductBrowser({
         </div>
       </div>
 
-      <p className="mt-5 text-sm font-medium text-navy/80" aria-live="polite">
-        Showing {list.length} of {products.length} product lines
-        {activePhone ? ` for ${activePhone.label}` : ""}
-      </p>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium text-navy/80" aria-live="polite">
+          Showing {list.length} of {products.length} product lines
+          {activePhone ? ` for ${activePhone.label}` : ""}
+        </p>
+        {(cat !== "All" || phone !== "all" || q) && (
+          <button
+            type="button"
+            onClick={reset}
+            className="text-xs font-bold text-royal hover:underline"
+          >
+            Clear all filters
+          </button>
+        )}
+      </div>
       {activePhone && (
         <p className="mt-1 max-w-2xl text-xs leading-relaxed text-navy/55">
           Wired earphones use a 3.5&nbsp;mm jack, and cases and screen guards fit specific models. Tell
@@ -159,7 +170,7 @@ export default function ProductBrowser({
               key={p.id}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
+              viewport={{ once: true, margin: "0px" }}
               transition={{ duration: 0.5, delay: (i % 4) * 0.06, ease: "easeOut" }}
               className="group flex flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-neutral-200/70 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-royal/25"
             >
@@ -182,16 +193,16 @@ export default function ProductBrowser({
                 )}
               </Link>
 
-              <div className="flex flex-1 flex-col p-5">
+              <div className="flex flex-1 flex-col p-4 sm:p-5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-navy/45">
                   {p.category}
                 </span>
-                <h3 className="mt-2 font-display text-base font-bold leading-snug text-navy">
+                <h3 className="mt-1.5 font-display text-base font-bold leading-snug text-navy sm:mt-2">
                   <Link href={`/products/${p.slug}`} className="transition-colors hover:text-royal">
                     {p.name}
                   </Link>
                 </h3>
-                <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-navy/65">
+                <p className="mt-1.5 line-clamp-2 flex-1 text-xs leading-relaxed text-navy/65 sm:mt-2 sm:text-sm">
                   {p.description}
                 </p>
 
@@ -202,7 +213,7 @@ export default function ProductBrowser({
                   <StockBadge status={p.stockStatus} />
                 </div>
 
-                <div className="mt-3 flex items-center justify-between gap-2">
+                <div className="mt-3.5 flex items-center gap-2">
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
@@ -211,17 +222,17 @@ export default function ProductBrowser({
                         activePhone ? ` (my phone: ${activePhone.label})` : ""
                       }`
                     )}
-                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-royal active:scale-95"
+                    className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-royal active:scale-95"
                   >
-                    <MessageCircle size={14} aria-hidden />
+                    <MessageCircle size={15} aria-hidden />
                     <span>Confirm on WhatsApp</span>
                   </a>
                   <Link
                     href={`/products/${p.slug}`}
                     aria-label={`Open ${p.name}`}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-neutral-200/80 text-navy transition-all duration-200 group-hover:border-navy group-hover:bg-navy group-hover:text-white"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-neutral-200/80 text-navy transition-all duration-200 hover:border-navy hover:bg-navy hover:text-white active:scale-95"
                   >
-                    <ArrowRight size={15} aria-hidden />
+                    <ArrowRight size={16} aria-hidden />
                   </Link>
                 </div>
               </div>

@@ -106,18 +106,21 @@ npm run deploy
 
 ### Deploying from GitHub (Workers Builds)
 
-When the repository is connected under Workers → *Settings* → *Builds*, both commands must use the
-OpenNext adapter:
+The repository is connected to Workers Builds (Workers → *Settings* → *Builds*), so every push to
+`main` runs a build that should end in a deploy. `npm run build` now runs the OpenNext build, which
+produces `.open-next/worker.js` and the assets that `wrangler.jsonc` points at, so the pipeline works
+with the default commands:
 
 | Setting | Value |
 | --- | --- |
-| Build command | `npx opennextjs-cloudflare build` |
-| Deploy command | `npx opennextjs-cloudflare deploy` |
+| Build command | `npm run build` (now `opennextjs-cloudflare build`) |
+| Deploy command | `npx wrangler deploy` or `npx opennextjs-cloudflare deploy` |
 
-The default build command (`npm run build`) only runs `next build`, which leaves `.open-next` empty;
-the deploy step then fails with *Could not find compiled Open Next config, did you run the build
-command?*. Note that `wrangler.jsonc` on the deployed branch must carry the current account's
-`database_id`, or the build deploys against a database that does not exist.
+Earlier the `build` script was a plain `next build`, which leaves `.open-next` empty; the deploy step
+then failed with *Could not find compiled Open Next config, did you run the build command?* and the
+push produced a red *Workers Builds: nobyst-global* check instead of a deployment. `npm run build:next`
+remains available for a Next-only build. `wrangler.jsonc` on the deployed branch must also carry the
+current account's `database_id`, or the build deploys against a database that does not exist.
 
 ## Deployment notes
 

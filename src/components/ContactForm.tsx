@@ -157,7 +157,7 @@ export default function ContactForm() {
       <div className="sm:col-span-2">
         <button
           type="submit"
-          className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-navy px-7 py-3 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-royal hover:shadow-lg active:scale-[0.98] sm:text-base"
+          className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-navy px-7 py-3 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-royal hover:shadow-lg active:scale-[0.98] sm:w-auto sm:text-base"
         >
           <MessageCircle size={18} aria-hidden />
           Send message

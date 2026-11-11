@@ -51,7 +51,7 @@ export default function Home() {
                   href={whatsappLink(`Hello ${site.short}, I would like to make an enquiry.`)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex min-h-[48px] items-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-white hover:text-navy hover:shadow-xl active:scale-[0.98] sm:text-base"
+                  className="group inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-white hover:text-navy hover:shadow-xl active:scale-[0.98] sm:w-auto sm:text-base"
                 >
                   <MessageCircle size={18} aria-hidden />
                   Chat with us on WhatsApp
@@ -142,15 +142,15 @@ export default function Home() {
             View all
           </Link>
         </div>
-        <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        <ul className="mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
           {categories.map((cat) => (
             <li key={cat}>
               <Link
                 href={`/products?category=${encodeURIComponent(cat)}`}
-                className="group flex min-h-[72px] items-center justify-between gap-3 rounded-2xl border border-neutral-200/60 bg-white p-4 text-sm font-bold text-navy shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-royal/40 hover:text-royal hover:shadow-md"
+                className="group flex min-h-[64px] sm:min-h-[72px] items-center justify-between gap-2 sm:gap-3 rounded-2xl border border-neutral-200/60 bg-white p-3 sm:p-4 text-xs sm:text-sm font-bold text-navy shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-royal/40 hover:text-royal hover:shadow-md"
               >
-                <span>{cat}</span>
-                <ArrowRight size={16} aria-hidden className="shrink-0 transition-transform group-hover:translate-x-1" />
+                <span className="leading-tight">{cat}</span>
+                <ArrowRight size={15} aria-hidden className="shrink-0 transition-transform group-hover:translate-x-1 text-navy/40 group-hover:text-royal" />
               </Link>
             </li>
           ))}
@@ -287,7 +287,7 @@ export default function Home() {
           {site.mission}
         </p>
 
-        <Reveal as="dl" className="mt-8 grid grid-cols-2 gap-4 sm:mt-10 sm:gap-6 lg:grid-cols-4">
+        <Reveal as="dl" className="mt-8 grid grid-cols-1 gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
           {values.map((v) => (
             <div
               key={v.title}
@@ -331,7 +331,7 @@ export default function Home() {
             </div>
             <Link
               href="/partnerships"
-              className="inline-flex min-h-[48px] shrink-0 items-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-bold text-navy shadow-md transition-all duration-200 hover:bg-white hover:shadow-xl active:scale-[0.98] sm:px-8 sm:py-4 sm:text-base"
+              className="inline-flex min-h-[48px] w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-bold text-navy shadow-md transition-all duration-200 hover:bg-white hover:shadow-xl active:scale-[0.98] sm:px-8 sm:py-4 sm:text-base"
             >
               <span>Send a partnership enquiry</span>
               <ArrowRight size={18} aria-hidden />

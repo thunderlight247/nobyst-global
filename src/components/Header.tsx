@@ -3,8 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, Search, X } from "lucide-react";
-import { nav } from "@/data/site";
+import { Menu, MessageCircle, Search, X } from "lucide-react";
+import { nav, site } from "@/data/site";
 
 export default function Header() {
   const path = usePathname();
@@ -105,23 +105,48 @@ export default function Header() {
         <nav
           id="mobile-nav"
           aria-label="Mobile"
-          className="border-t border-navy/10 bg-white px-5 py-2 shadow-lg md:hidden"
+          className="border-t border-navy/10 bg-white px-5 py-3 shadow-xl md:hidden max-h-[calc(100vh-4rem)] overflow-y-auto"
         >
-          {nav.map((n) => {
-            const isActive = path === n.href;
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                aria-current={isActive ? "page" : undefined}
-                className={`block border-b border-navy/5 py-3.5 text-base font-bold transition-colors last:border-0 ${
-                  isActive ? "text-royal" : "text-navy/85 hover:text-royal"
-                }`}
-              >
-                {n.label}
-              </Link>
-            );
-          })}
+          <div className="mb-3 pt-1">
+            <Link
+              href="/products"
+              onClick={() => setOpen(false)}
+              className="flex h-11 w-full items-center gap-2.5 rounded-full border border-neutral-200/80 bg-neutral-50 px-4 text-sm font-medium text-navy/70 transition-colors hover:border-royal/40 hover:text-navy"
+            >
+              <Search size={16} aria-hidden className="text-navy/50" />
+              <span>Search products &amp; accessories</span>
+            </Link>
+          </div>
+
+          <div className="divide-y divide-navy/5">
+            {nav.map((n) => {
+              const isActive = path === n.href;
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`flex min-h-[44px] items-center py-3 text-base font-bold transition-colors ${
+                    isActive ? "text-royal" : "text-navy/85 hover:text-royal"
+                  }`}
+                >
+                  {n.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 border-t border-navy/10 pt-3 pb-1">
+            <a
+              href={`https://wa.me/${site.whatsapp}?text=${encodeURIComponent("Hello NOBYST, I would like to make an enquiry.")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1ebd5a] active:scale-[0.98]"
+            >
+              <MessageCircle size={17} aria-hidden />
+              <span>Chat on WhatsApp ({site.phone})</span>
+            </a>
+          </div>
         </nav>
       )}
 

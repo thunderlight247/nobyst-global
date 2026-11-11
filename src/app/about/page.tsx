@@ -108,7 +108,7 @@ export default function About() {
         <h2 className="font-display text-2xl font-bold tracking-tight text-navy sm:text-4xl">
           Our core values
         </h2>
-        <dl className="mt-6 grid grid-cols-2 gap-4 sm:mt-8 sm:gap-6 lg:grid-cols-4">
+        <dl className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
           {values.map((v) => (
             <div
               key={v.title}
