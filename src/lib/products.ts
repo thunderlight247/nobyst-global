@@ -1,4 +1,5 @@
 import { categories, phoneGroups, type PhoneGroupId } from "@/data/site";
+import { DEFAULT_STOCK_STATUS, isStockStatus, type StockStatus } from "./catalogue";
 import { getEnv } from "./cloudflare";
 
 export type Category = (typeof categories)[number];
@@ -13,6 +14,9 @@ export type Product = {
   image: string;
   /** Extra photos shown under the main one on the product page. */
   gallery: string[];
+  /** Price in pesewas; null means the price is confirmed on WhatsApp. */
+  pricePesewas: number | null;
+  stockStatus: StockStatus;
   imageAlt: string;
   fits: PhoneGroupId[];
   sortOrder: number;
@@ -25,6 +29,8 @@ export type ProductInput = {
   features: string[];
   image: string;
   gallery: string[];
+  pricePesewas: number | null;
+  stockStatus: StockStatus;
   imageAlt: string;
   fits: PhoneGroupId[];
 };
@@ -38,6 +44,8 @@ type ProductRow = {
   features: string;
   image: string;
   gallery: string;
+  price_pesewas: number | null;
+  stock_status: string;
   image_alt: string;
   fits: string;
   sort_order: number;
@@ -68,6 +76,9 @@ function mapRow(row: ProductRow): Product {
     features: parseList(row.features),
     image: row.image,
     gallery: parseList(row.gallery),
+    pricePesewas:
+      typeof row.price_pesewas === "number" && row.price_pesewas > 0 ? row.price_pesewas : null,
+    stockStatus: isStockStatus(row.stock_status) ? row.stock_status : DEFAULT_STOCK_STATUS,
     imageAlt: row.image_alt,
     fits: parseList(row.fits).filter((f): f is PhoneGroupId => FIT_SET.has(f)),
     sortOrder: row.sort_order,
@@ -167,6 +178,25 @@ export function parseProductInput(raw: unknown): { ok: true; value: ProductInput
   if (gallery.length > MAX_GALLERY)
     return { ok: false, error: `Keep the extra photos to ${MAX_GALLERY} or fewer.` };
 
+  // Blank means the price is shown as "Ask for price" rather than as free.
+  const rawPrice = body.price;
+  let pricePesewas: number | null = null;
+  if (rawPrice !== null && rawPrice !== undefined && String(rawPrice).trim() !== "") {
+    const cleaned = String(rawPrice)
+      .replace(/^(GH₵|GHS|₵)/i, "")
+      .replace(/[\s,]/g, "")
+      .trim();
+    if (!/^\d{1,7}(\.\d{1,2})?$/.test(cleaned))
+      return { ok: false, error: "Enter the price in cedis, for example 45 or 45.50." };
+    const price = Number(cleaned);
+    if (price > 1_000_000)
+      return { ok: false, error: "That price looks too high — enter the amount in cedis." };
+    pricePesewas = Math.round(price * 100) || null;
+  }
+
+  const stockStatus = typeof body.stockStatus === "string" ? body.stockStatus : DEFAULT_STOCK_STATUS;
+  if (!isStockStatus(stockStatus)) return { ok: false, error: "Choose a valid stock status." };
+
   const imageAlt = typeof body.imageAlt === "string" ? body.imageAlt.trim() : "";
   if (imageAlt.length < 3 || imageAlt.length > 160)
     return { ok: false, error: "Image description must be 3–160 characters." };
@@ -177,7 +207,18 @@ export function parseProductInput(raw: unknown): { ok: true; value: ProductInput
 
   return {
     ok: true,
-    value: { name, category: category as Category, description, features, image, gallery, imageAlt, fits },
+    value: {
+      name,
+      category: category as Category,
+      description,
+      features,
+      image,
+      gallery,
+      pricePesewas,
+      stockStatus,
+      imageAlt,
+      fits,
+    },
   };
 }
 
@@ -189,8 +230,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
   const sortOrder = (row?.max ?? 0) + 1;
 
   await DB.prepare(
-    `INSERT INTO products (id, slug, name, category, description, features, image, gallery, image_alt, fits, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO products (id, slug, name, category, description, features, image, gallery, price_pesewas, stock_status, image_alt, fits, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -201,6 +242,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       JSON.stringify(input.features),
       input.image,
       JSON.stringify(input.gallery),
+      input.pricePesewas,
+      input.stockStatus,
       input.imageAlt,
       JSON.stringify(input.fits),
       sortOrder
@@ -219,7 +262,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
 
   await DB.prepare(
     `UPDATE products
-     SET name = ?, category = ?, description = ?, features = ?, image = ?, gallery = ?, image_alt = ?, fits = ?, updated_at = CURRENT_TIMESTAMP
+     SET name = ?, category = ?, description = ?, features = ?, image = ?, gallery = ?, price_pesewas = ?, stock_status = ?, image_alt = ?, fits = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
   )
     .bind(
@@ -229,6 +272,8 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
       JSON.stringify(input.features),
       input.image,
       JSON.stringify(input.gallery),
+      input.pricePesewas,
+      input.stockStatus,
       input.imageAlt,
       JSON.stringify(input.fits),
       id

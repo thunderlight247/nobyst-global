@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import ProductForm from "@/components/admin/ProductForm";
+import StockBadge from "@/components/StockBadge";
+import { formatPrice } from "@/lib/catalogue";
 import type { Product } from "@/lib/products";
 
 type Status = { kind: "ok" | "error"; text: string } | null;
@@ -111,6 +113,12 @@ export default function AdminCatalogue({ initialProducts }: { initialProducts: P
                 <p className="mt-0.5 text-xs text-navy/60">
                   {p.category} · {p.fits.length} phone families · /products/{p.slug}
                 </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-navy/75">
+                    {formatPrice(p.pricePesewas) ?? "No price set"}
+                  </span>
+                  <StockBadge status={p.stockStatus} />
+                </div>
               </div>
 
               <div className="flex shrink-0 gap-2">

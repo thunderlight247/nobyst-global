@@ -6,6 +6,8 @@ import { Search, MessageCircle, AlertCircle, Smartphone, ChevronDown, ArrowRight
 import { categories, phoneGroups, site } from "@/data/site";
 import type { PhoneGroupId } from "@/data/site";
 import type { Product } from "@/lib/products";
+import StockBadge from "@/components/StockBadge";
+import { formatPrice } from "@/lib/catalogue";
 import { whatsappLink } from "@/lib/contact-links";
 import { motion } from "framer-motion";
 
@@ -193,7 +195,14 @@ export default function ProductBrowser({
                   {p.description}
                 </p>
 
-                <div className="mt-4 flex items-center justify-between gap-2">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-display text-sm font-bold text-navy">
+                    {formatPrice(p.pricePesewas) ?? "Ask for price"}
+                  </span>
+                  <StockBadge status={p.stockStatus} />
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-2">
                   <a
                     target="_blank"
                     rel="noopener noreferrer"

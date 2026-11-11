@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AlertCircle, Loader2, Star, Upload, X } from "lucide-react";
 import { categories, phoneGroups } from "@/data/site";
+import { DEFAULT_STOCK_STATUS, stockStatuses, type StockStatus } from "@/lib/catalogue";
 import type { Product } from "@/lib/products";
 
 type Props = {
@@ -20,6 +21,12 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
   const [image, setImage] = useState(product?.image ?? "");
   const [gallery, setGallery] = useState<string[]>(product?.gallery ?? []);
   const [imageAlt, setImageAlt] = useState(product?.imageAlt ?? "");
+  const [price, setPrice] = useState(
+    product?.pricePesewas != null ? (product.pricePesewas / 100).toFixed(2) : ""
+  );
+  const [stockStatus, setStockStatus] = useState<StockStatus>(
+    product?.stockStatus ?? DEFAULT_STOCK_STATUS
+  );
   const [error, setError] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -100,6 +107,8 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
         features: features.split("\n").map((f) => f.trim()).filter(Boolean),
         image,
         gallery,
+        price: price.trim(),
+        stockStatus,
         imageAlt,
         fits,
       };
@@ -174,6 +183,50 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
                 {categories.map((c) => (
                   <option key={c} value={c}>
                     {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="p-price" className="mb-1.5 block text-xs font-bold text-navy">
+                Price in cedis (optional)
+              </label>
+              <div className="relative">
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-navy/45"
+                >
+                  GH₵
+                </span>
+                <input
+                  id="p-price"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="45.00"
+                  className="min-h-[44px] w-full rounded-xl border border-navy/20 py-2.5 pl-14 pr-3.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-navy/55">
+                Leave blank to show &ldquo;Ask for price&rdquo; on the site.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="p-stock" className="mb-1.5 block text-xs font-bold text-navy">
+                Stock status
+              </label>
+              <select
+                id="p-stock"
+                value={stockStatus}
+                onChange={(e) => setStockStatus(e.target.value as StockStatus)}
+                className="min-h-[44px] w-full rounded-xl border border-navy/20 bg-white px-3 py-2.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+              >
+                {stockStatuses.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
                   </option>
                 ))}
               </select>

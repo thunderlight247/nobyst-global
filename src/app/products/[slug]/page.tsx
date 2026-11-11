@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Check, MessageCircle, Package, ShieldCheck } from "lucide-react";
 import BulkOrderForm from "@/components/BulkOrderForm";
 import ProductGallery from "@/components/ProductGallery";
+import StockBadge from "@/components/StockBadge";
+import { formatPrice } from "@/lib/catalogue";
 import { phoneGroups, site } from "@/data/site";
 import { getProductBySlug, listRelated } from "@/lib/products";
 import { whatsappLink } from "@/lib/contact-links";
@@ -32,6 +34,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const fits = phoneGroups.filter((g) => product.fits.includes(g.id));
   const related = await listRelated(product.category, product.id);
   const isDevice = product.category === "Phones & devices";
+  const price = formatPrice(product.pricePesewas);
   const photos = [
     { src: product.image, alt: product.imageAlt },
     ...product.gallery.map((src) => ({ src, alt: "" })),
@@ -57,6 +60,14 @@ export default async function ProductPage({ params }: { params: { slug: string }
           <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">
             {product.name}
           </h1>
+          <div className="mt-3 flex flex-wrap items-center gap-2.5">
+            {price ? (
+              <p className="font-display text-2xl font-extrabold text-navy">{price}</p>
+            ) : (
+              <p className="text-sm font-bold text-navy/70">Ask for price</p>
+            )}
+            <StockBadge status={product.stockStatus} />
+          </div>
           <p className="mt-3 text-sm leading-relaxed text-navy/75 sm:text-base">{product.description}</p>
 
           <ul className="mt-6 space-y-2.5">
