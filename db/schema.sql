@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS products (
   description TEXT NOT NULL,
   features TEXT NOT NULL DEFAULT '[]',
   image TEXT NOT NULL,
+  gallery TEXT NOT NULL DEFAULT '[]',
   image_alt TEXT NOT NULL DEFAULT '',
   fits TEXT NOT NULL DEFAULT '[]',
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -16,3 +17,6 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
 CREATE INDEX IF NOT EXISTS idx_products_sort ON products (sort_order);
+
+-- Existing databases created before multi-image support:
+--   ALTER TABLE products ADD COLUMN gallery TEXT NOT NULL DEFAULT '[]';

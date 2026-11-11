@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   deleteProduct,
-  deleteReplacedMedia,
+  deleteUnusedMedia,
   getProductById,
   parseProductInput,
   updateProduct,
@@ -26,7 +26,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const product = await updateProduct(params.id, parsed.value);
     if (!product) return NextResponse.json({ error: "Product not found." }, { status: 404 });
 
-    await deleteReplacedMedia(previous.image, product.image);
+    await deleteUnusedMedia(
+      [previous.image, ...previous.gallery],
+      [product.image, ...product.gallery]
+    );
     return NextResponse.json({ product });
   } catch (error) {
     console.error("Could not update product", error);

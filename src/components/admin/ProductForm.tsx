@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { AlertCircle, Loader2, Upload, X } from "lucide-react";
+import { AlertCircle, Loader2, Star, Upload, X } from "lucide-react";
 import { categories, phoneGroups } from "@/data/site";
 import type { Product } from "@/lib/products";
 
@@ -18,12 +18,15 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
   const [features, setFeatures] = useState((product?.features ?? []).join("\n"));
   const [fits, setFits] = useState<string[]>(product?.fits ?? []);
   const [image, setImage] = useState(product?.image ?? "");
+  const [gallery, setGallery] = useState<string[]>(product?.gallery ?? []);
   const [imageAlt, setImageAlt] = useState(product?.imageAlt ?? "");
   const [error, setError] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  const photos = [image, ...gallery].filter(Boolean);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -39,21 +42,44 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
     );
   }
 
-  async function uploadFile(file: File) {
+  async function uploadFiles(files: File[]) {
+    if (files.length === 0) return;
     setUploadError("");
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/admin/media", { method: "POST", body: form });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "The image could not be uploaded.");
-      setImage(data.url);
+      let hero = image;
+      const added: string[] = [];
+      for (const file of files) {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/admin/media", { method: "POST", body: form });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? "An image could not be uploaded.");
+        if (!hero) hero = data.url as string;
+        else added.push(data.url as string);
+      }
+      if (hero !== image) setImage(hero);
+      if (added.length) setGallery((current) => [...current, ...added]);
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : "The image could not be uploaded.");
+      setUploadError(e instanceof Error ? e.message : "An image could not be uploaded.");
     } finally {
       setUploading(false);
     }
+  }
+
+  /** Index 0 is the main photo shown on the catalogue card. */
+  function removePhoto(index: number) {
+    const remaining = photos.filter((_, i) => i !== index);
+    setImage(remaining[0] ?? "");
+    setGallery(remaining.slice(1));
+  }
+
+  function makeMain(index: number) {
+    if (index === 0) return;
+    const chosen = photos[index];
+    const rest = photos.filter((_, i) => i !== index);
+    setImage(chosen);
+    setGallery(rest);
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -61,7 +87,7 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
     setError("");
 
     if (!image) {
-      setError("Upload a product image before saving.");
+      setError("Upload at least one product photo before saving.");
       return;
     }
 
@@ -73,6 +99,7 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
         description,
         features: features.split("\n").map((f) => f.trim()).filter(Boolean),
         image,
+        gallery,
         imageAlt,
         fits,
       };
@@ -205,53 +232,94 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
           </fieldset>
 
           <div className="rounded-2xl border border-navy/10 bg-navy/[0.02] p-4">
-            <p className="text-xs font-bold text-navy">Product photo</p>
-            <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-xl border border-navy/10 bg-white">
-                {image ? (
-                  <Image src={image} alt="" fill sizes="128px" className="object-cover" />
-                ) : (
-                  <span className="flex h-full items-center justify-center px-2 text-center text-[10px] text-navy/40">
-                    No image yet
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <input
-                  ref={fileInput}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="sr-only"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void uploadFile(file);
-                    e.target.value = "";
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInput.current?.click()}
-                  disabled={uploading}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-navy/20 bg-white px-4 py-2 text-xs font-bold text-navy transition-colors hover:border-royal hover:text-royal disabled:opacity-60"
-                >
-                  {uploading ? (
-                    <Loader2 size={15} className="animate-spin" aria-hidden />
-                  ) : (
-                    <Upload size={15} aria-hidden />
-                  )}
-                  {uploading ? "Uploading…" : image ? "Replace image" : "Upload image"}
-                </button>
-                <p className="text-[11px] text-navy/55">JPG, PNG or WebP up to 6 MB.</p>
-                {uploadError && (
-                  <p role="alert" className="text-[11px] font-medium text-red-600">
-                    {uploadError}
-                  </p>
-                )}
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-bold text-navy">Product photos</p>
+              <p className="text-[11px] text-navy/55">
+                {photos.length} photo{photos.length === 1 ? "" : "s"} · the first is the main one
+              </p>
             </div>
 
+            <div className="mt-3">
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="sr-only"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length) void uploadFiles(files);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={uploading}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-navy/20 bg-white px-4 py-2 text-xs font-bold text-navy transition-colors hover:border-royal hover:text-royal disabled:opacity-60"
+              >
+                {uploading ? (
+                  <Loader2 size={15} className="animate-spin" aria-hidden />
+                ) : (
+                  <Upload size={15} aria-hidden />
+                )}
+                {uploading ? "Uploading…" : photos.length ? "Add more photos" : "Upload photos"}
+              </button>
+              <p className="mt-1.5 text-[11px] text-navy/55">
+                Select one or several at once. JPG, PNG or WebP up to 6 MB each.
+              </p>
+              {uploadError && (
+                <p role="alert" className="mt-1.5 text-[11px] font-medium text-red-600">
+                  {uploadError}
+                </p>
+              )}
+            </div>
+
+            {photos.length > 0 && (
+              <ul className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+                {photos.map((src, i) => (
+                  <li key={`${src}-${i}`} className="relative">
+                    <div
+                      className={`relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-white ${
+                        i === 0 ? "border-royal" : "border-navy/10"
+                      }`}
+                    >
+                      <Image src={src} alt="" fill sizes="160px" className="object-cover" />
+                    </div>
+                    {i === 0 && (
+                      <span className="absolute left-1 top-1 rounded-full bg-royal px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                        Main
+                      </span>
+                    )}
+                    <div className="mt-1 flex items-center justify-between gap-1">
+                      {i === 0 ? (
+                        <span className="text-[10px] text-navy/45">Catalogue card</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => makeMain(i)}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-navy/70 transition-colors hover:text-royal"
+                        >
+                          <Star size={11} aria-hidden />
+                          Make main
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(i)}
+                        aria-label={`Remove photo ${i + 1}`}
+                        className="inline-flex items-center text-navy/50 transition-colors hover:text-red-600"
+                      >
+                        <X size={13} aria-hidden />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             <label htmlFor="p-alt" className="mt-4 block text-xs font-bold text-navy">
-              Image description
+              Main photo description
             </label>
             <input
               id="p-alt"
@@ -259,7 +327,7 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
               onChange={(e) => setImageAlt(e.target.value)}
               maxLength={160}
               required
-              placeholder="Describe the photo for screen readers"
+              placeholder="Describe the main photo for screen readers"
               className="mt-1.5 min-h-[44px] w-full rounded-xl border border-navy/20 px-3.5 py-2.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
             />
           </div>

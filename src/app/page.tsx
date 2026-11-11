@@ -142,7 +142,7 @@ export default function Home() {
             View all
           </Link>
         </div>
-        <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+        <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           {categories.map((cat) => (
             <li key={cat}>
               <Link

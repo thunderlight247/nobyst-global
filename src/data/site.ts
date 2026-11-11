@@ -54,7 +54,7 @@ export const current = [
     tag: "Retail division",
     text: "Everyday phone accessories and related retail products for customers in Techiman and beyond.",
     points: [
-      "Chargers, cables, power banks, audio and phone protection",
+      "Chargers, cables, audio, cases, screen protection and phones",
       "Product guidance on fit and compatibility before you buy",
       "Availability checks and follow-up through WhatsApp",
     ],
@@ -107,11 +107,12 @@ export const future = [
 ];
 
 export const categories = [
+  "Audio & headphones",
   "Chargers & cables",
-  "Power banks",
-  "Earphones & audio",
-  "Phone cases & screen guards",
-  "Holders & stands",
+  "Adapters, readers & storage",
+  "Cases & screen protection",
+  "Stands & mounts",
+  "Phones & devices",
 ] as const;
 
 // Phone families customers can filter by. Keep these to broad, recognisable groups.

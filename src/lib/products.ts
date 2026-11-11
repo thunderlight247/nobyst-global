@@ -11,6 +11,8 @@ export type Product = {
   description: string;
   features: string[];
   image: string;
+  /** Extra photos shown under the main one on the product page. */
+  gallery: string[];
   imageAlt: string;
   fits: PhoneGroupId[];
   sortOrder: number;
@@ -22,6 +24,7 @@ export type ProductInput = {
   description: string;
   features: string[];
   image: string;
+  gallery: string[];
   imageAlt: string;
   fits: PhoneGroupId[];
 };
@@ -34,6 +37,7 @@ type ProductRow = {
   description: string;
   features: string;
   image: string;
+  gallery: string;
   image_alt: string;
   fits: string;
   sort_order: number;
@@ -41,8 +45,11 @@ type ProductRow = {
 
 const CATEGORY_SET = new Set<string>(categories);
 const FIT_SET = new Set<string>(phoneGroups.map((g) => g.id));
+const MEDIA_PREFIX = "/api/media/";
+const MAX_GALLERY = 24;
 
-function parseList(raw: string): string[] {
+function parseList(raw: string | null): string[] {
+  if (!raw) return [];
   try {
     const value = JSON.parse(raw);
     return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
@@ -60,6 +67,7 @@ function mapRow(row: ProductRow): Product {
     description: row.description,
     features: parseList(row.features),
     image: row.image,
+    gallery: parseList(row.gallery),
     imageAlt: row.image_alt,
     fits: parseList(row.fits).filter((f): f is PhoneGroupId => FIT_SET.has(f)),
     sortOrder: row.sort_order,
@@ -118,6 +126,12 @@ async function uniqueSlug(title: string): Promise<string> {
   return `${base}-${Date.now()}`;
 }
 
+function parseImagePath(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const path = value.trim();
+  return path.startsWith("/") && path.length <= 500 ? path : null;
+}
+
 /** Validates untrusted JSON from the admin form. */
 export function parseProductInput(raw: unknown): { ok: true; value: ProductInput } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object") return { ok: false, error: "Invalid request body." };
@@ -142,9 +156,16 @@ export function parseProductInput(raw: unknown): { ok: true; value: ProductInput
     return { ok: false, error: "Add between 1 and 8 features." };
   if (features.some((f) => f.length > 140)) return { ok: false, error: "Each feature must be 140 characters or fewer." };
 
-  const image = typeof body.image === "string" ? body.image.trim() : "";
-  if (!image.startsWith("/") || image.length > 500)
-    return { ok: false, error: "Upload an image or choose an existing one." };
+  const image = parseImagePath(body.image);
+  if (!image) return { ok: false, error: "Upload an image or choose an existing one." };
+
+  const rawGallery = Array.isArray(body.gallery) ? body.gallery : [];
+  const gallery = rawGallery
+    .map(parseImagePath)
+    .filter((p): p is string => Boolean(p) && p !== image)
+    .filter((p, i, all) => all.indexOf(p) === i);
+  if (gallery.length > MAX_GALLERY)
+    return { ok: false, error: `Keep the extra photos to ${MAX_GALLERY} or fewer.` };
 
   const imageAlt = typeof body.imageAlt === "string" ? body.imageAlt.trim() : "";
   if (imageAlt.length < 3 || imageAlt.length > 160)
@@ -156,7 +177,7 @@ export function parseProductInput(raw: unknown): { ok: true; value: ProductInput
 
   return {
     ok: true,
-    value: { name, category: category as Category, description, features, image, imageAlt, fits },
+    value: { name, category: category as Category, description, features, image, gallery, imageAlt, fits },
   };
 }
 
@@ -168,8 +189,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
   const sortOrder = (row?.max ?? 0) + 1;
 
   await DB.prepare(
-    `INSERT INTO products (id, slug, name, category, description, features, image, image_alt, fits, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO products (id, slug, name, category, description, features, image, gallery, image_alt, fits, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -179,6 +200,7 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       input.description,
       JSON.stringify(input.features),
       input.image,
+      JSON.stringify(input.gallery),
       input.imageAlt,
       JSON.stringify(input.fits),
       sortOrder
@@ -197,7 +219,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
 
   await DB.prepare(
     `UPDATE products
-     SET name = ?, category = ?, description = ?, features = ?, image = ?, image_alt = ?, fits = ?, updated_at = CURRENT_TIMESTAMP
+     SET name = ?, category = ?, description = ?, features = ?, image = ?, gallery = ?, image_alt = ?, fits = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
   )
     .bind(
@@ -206,6 +228,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
       input.description,
       JSON.stringify(input.features),
       input.image,
+      JSON.stringify(input.gallery),
       input.imageAlt,
       JSON.stringify(input.fits),
       id
@@ -215,39 +238,43 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
   return getProductById(id);
 }
 
-/** Deletes the product row and any R2 media that was uploaded for it. */
+/** Turns a stored image path into an R2 object key, when it is one of ours. */
+function mediaKey(path: string): string | null {
+  if (!path.startsWith(MEDIA_PREFIX)) return null;
+  const key = decodeURIComponent(path.slice(MEDIA_PREFIX.length));
+  return key.startsWith("products/") ? key : null;
+}
+
+/** Best-effort removal: a leftover object must never fail a catalogue write. */
+async function removeMedia(paths: string[]): Promise<void> {
+  const keys = paths.map(mediaKey).filter((k): k is string => Boolean(k));
+  if (keys.length === 0) return;
+  const { MEDIA } = await getEnv();
+  await Promise.all(
+    keys.map(async (key) => {
+      try {
+        await MEDIA.delete(key);
+      } catch {
+        // Ignore: the catalogue row is the source of truth.
+      }
+    })
+  );
+}
+
+/** Deletes the product row and any R2 media uploaded for it. */
 export async function deleteProduct(id: string): Promise<boolean> {
-  const { DB, MEDIA } = await getEnv();
+  const { DB } = await getEnv();
   const existing = await getProductById(id);
   if (!existing) return false;
 
   await DB.prepare("DELETE FROM products WHERE id = ?").bind(id).run();
-
-  const prefix = "/api/media/";
-  if (existing.image.startsWith(prefix)) {
-    const key = decodeURIComponent(existing.image.slice(prefix.length));
-    if (key.startsWith("products/")) {
-      try {
-        await MEDIA.delete(key);
-      } catch {
-        // The row is already gone; a leftover object should not fail the request.
-      }
-    }
-  }
+  await removeMedia([existing.image, ...existing.gallery]);
 
   return true;
 }
 
-/** Rejects orphaning an uploaded image when it is replaced during an edit. */
-export async function deleteReplacedMedia(previous: string, next: string): Promise<void> {
-  const prefix = "/api/media/";
-  if (!previous.startsWith(prefix) || previous === next) return;
-  const key = decodeURIComponent(previous.slice(prefix.length));
-  if (!key.startsWith("products/")) return;
-  const { MEDIA } = await getEnv();
-  try {
-    await MEDIA.delete(key);
-  } catch {
-    // Non-fatal: the product now points at the new image.
-  }
+/** Rejects orphaning uploaded photos when they are replaced or removed during an edit. */
+export async function deleteUnusedMedia(previous: string[], next: string[]): Promise<void> {
+  const keep = new Set(next);
+  await removeMedia(previous.filter((path) => !keep.has(path)));
 }

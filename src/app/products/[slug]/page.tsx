@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, MessageCircle, Package, ShieldCheck } from "lucide-react";
 import BulkOrderForm from "@/components/BulkOrderForm";
+import ProductGallery from "@/components/ProductGallery";
 import { phoneGroups, site } from "@/data/site";
 import { getProductBySlug, listRelated } from "@/lib/products";
 import { whatsappLink } from "@/lib/contact-links";
@@ -30,6 +31,11 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   const fits = phoneGroups.filter((g) => product.fits.includes(g.id));
   const related = await listRelated(product.category, product.id);
+  const isDevice = product.category === "Phones & devices";
+  const photos = [
+    { src: product.image, alt: product.imageAlt },
+    ...product.gallery.map((src) => ({ src, alt: "" })),
+  ];
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-10 sm:px-6 sm:py-16 lg:px-8">
@@ -42,24 +48,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
       </Link>
 
       <div className="mt-5 grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <div>
-          <div className="relative overflow-hidden rounded-3xl border border-navy/10 bg-royal-100/50 shadow-sm">
-            <div className="relative aspect-[4/3] w-full">
-              <Image
-                src={product.image}
-                alt={product.imageAlt}
-                fill
-                priority
-                sizes="(min-width:1024px) 45vw, 100vw"
-                className="object-cover"
-              />
-            </div>
-          </div>
-          <p className="mt-2.5 text-[11px] leading-relaxed text-navy/50">
-            Illustrative product photo. Colours and packaging vary with each delivery — confirm on
-            WhatsApp.
-          </p>
-        </div>
+        <ProductGallery photos={photos} alt={product.imageAlt} />
 
         <div>
           <span className="inline-block rounded-full bg-gold/15 px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600">
@@ -79,26 +68,28 @@ export default async function ProductPage({ params }: { params: { slug: string }
             ))}
           </ul>
 
-          <div className="mt-7 rounded-2xl border border-navy/10 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-royal">
-              <ShieldCheck size={14} aria-hidden />
-              <h2>Phone compatibility</h2>
+          {!isDevice && (
+            <div className="mt-7 rounded-2xl border border-navy/10 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-royal">
+                <ShieldCheck size={14} aria-hidden />
+                <h2>Phone compatibility</h2>
+              </div>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {fits.map((g) => (
+                  <li
+                    key={g.id}
+                    className="rounded-full border border-navy/10 bg-royal-50 px-3 py-1.5 text-xs font-medium text-navy/80"
+                  >
+                    {g.label}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs leading-relaxed text-navy/60">
+                Cases and screen guards fit specific models. Send your exact phone model on WhatsApp and
+                we will confirm fit and availability.
+              </p>
             </div>
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {fits.map((g) => (
-                <li
-                  key={g.id}
-                  className="rounded-full border border-navy/10 bg-royal-50 px-3 py-1.5 text-xs font-medium text-navy/80"
-                >
-                  {g.label}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 text-xs leading-relaxed text-navy/60">
-              Cases and screen guards fit specific models. Send your exact phone model on WhatsApp and
-              we will confirm fit and availability.
-            </p>
-          </div>
+          )}
 
           <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
             <a
