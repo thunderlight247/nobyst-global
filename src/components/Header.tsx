@@ -141,6 +141,7 @@ export default function Header() {
                 <Link
                   key={n.href}
                   href={n.href}
+                  onClick={() => setOpen(false)}
                   aria-current={isActive ? "page" : undefined}
                   className={`flex min-h-[44px] items-center py-3 text-base font-bold transition-colors ${
                     isActive ? "text-royal" : "text-navy/85 hover:text-royal"
