@@ -4,15 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "NODE_OPTIONS=\"--max-old-space-size=1536\" opennextjs-cloudflare build",
-    "build:next": "NODE_OPTIONS=\"--max-old-space-size=1536\" next build",
+    "build": "NODE_OPTIONS=\"--max-old-space-size=1536\" next build",
+    "worker:build": "NODE_OPTIONS=\"--max-old-space-size=1536\" opennextjs-cloudflare build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:init": "wrangler d1 execute nobyst-catalog --local --file=./db/schema.sql",
     "db:seed": "wrangler d1 execute nobyst-catalog --local --file=./db/seed.sql",
-    "worker:build": "opennextjs-cloudflare build",
-    "deploy": "opennextjs-cloudflare build && NODE_OPTIONS=\"--dns-result-order=ipv4first --no-network-family-autoselection\" opennextjs-cloudflare deploy"
+    "deploy": "NODE_OPTIONS=\"--max-old-space-size=1536\" opennextjs-cloudflare build && NODE_OPTIONS=\"--max-old-space-size=1536 --dns-result-order=ipv4first --no-network-family-autoselection\" npx wrangler deploy"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.14.6",
