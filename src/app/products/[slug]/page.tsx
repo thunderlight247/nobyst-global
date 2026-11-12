@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Check, MessageCircle, Package, ShieldCheck } from "lucide-react";
 import BulkOrderForm from "@/components/BulkOrderForm";
 import ProductGallery from "@/components/ProductGallery";
+import ProductDetailInteractive from "@/components/ProductDetailInteractive";
 import StockBadge from "@/components/StockBadge";
 import { formatPrice } from "@/lib/catalogue";
 import { phoneGroups, site } from "@/data/site";
@@ -51,7 +52,15 @@ export default async function ProductPage({ params }: { params: { slug: string }
       </Link>
 
       <div className="mt-5 grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <ProductGallery photos={photos} alt={product.imageAlt} />
+        <ProductDetailInteractive
+          photos={photos}
+          alt={product.imageAlt}
+          productName={product.name}
+          category={product.category}
+          priceFormatted={price}
+          model3dUrl={product.model3dUrl}
+          colors={product.colors}
+        />
 
         <div>
           <span className="inline-block rounded-full bg-gold/15 px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600">

@@ -27,6 +27,8 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
   const [stockStatus, setStockStatus] = useState<StockStatus>(
     product?.stockStatus ?? DEFAULT_STOCK_STATUS
   );
+  const [model3dUrl, setModel3dUrl] = useState(product?.model3dUrl ?? "");
+  const [colors, setColors] = useState((product?.colors ?? []).join(", "));
   const [error, setError] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -107,6 +109,11 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
         features: features.split("\n").map((f) => f.trim()).filter(Boolean),
         image,
         gallery,
+        model3dUrl: model3dUrl.trim() || null,
+        colors: colors
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean),
         price: price.trim(),
         stockStatus,
         imageAlt,
@@ -383,6 +390,40 @@ export default function ProductForm({ product, onSaved, onClose }: Props) {
               placeholder="Describe the main photo for screen readers"
               className="mt-1.5 min-h-[44px] w-full rounded-xl border border-navy/20 px-3.5 py-2.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
             />
+
+            <div className="mt-5 rounded-2xl border border-navy/10 bg-slate-50 p-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-royal">
+                Interactive 3D &amp; Swatches
+              </span>
+
+              <label htmlFor="p-3d" className="mt-2.5 block text-xs font-bold text-navy">
+                3D Model URL (.glb / .gltf)
+              </label>
+              <input
+                id="p-3d"
+                value={model3dUrl}
+                onChange={(e) => setModel3dUrl(e.target.value)}
+                placeholder="/api/media/products/model.glb or https://..."
+                className="mt-1.5 min-h-[44px] w-full rounded-xl border border-navy/20 bg-white px-3.5 py-2.5 text-sm text-navy placeholder:text-navy/40 focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+              />
+              <p className="mt-1 text-[11px] text-navy/55">
+                Leave empty for 2D-only products. When provided, the &ldquo;View in 3D&rdquo; button activates.
+              </p>
+
+              <label htmlFor="p-colors" className="mt-3 block text-xs font-bold text-navy">
+                Color Variants
+              </label>
+              <input
+                id="p-colors"
+                value={colors}
+                onChange={(e) => setColors(e.target.value)}
+                placeholder="Black, Gold, Navy, Silver"
+                className="mt-1.5 min-h-[44px] w-full rounded-xl border border-navy/20 bg-white px-3.5 py-2.5 text-sm text-navy placeholder:text-navy/40 focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+              />
+              <p className="mt-1 text-[11px] text-navy/55">
+                Comma-separated colors. Enables real-time material swatches on the 3D viewer &amp; PDP.
+              </p>
+            </div>
           </div>
 
           {error && (

@@ -14,6 +14,10 @@ export type Product = {
   image: string;
   /** Extra photos shown under the main one on the product page. */
   gallery: string[];
+  /** Optional 3D GLB/GLTF model URL in Cloudflare R2 or CDN */
+  model3dUrl?: string | null;
+  /** Available color variants (names or hex codes e.g. ["Black", "Gold", "Blue"]) */
+  colors: string[];
   /** Price in pesewas; null means the price is confirmed on WhatsApp. */
   pricePesewas: number | null;
   stockStatus: StockStatus;
@@ -29,6 +33,8 @@ export type ProductInput = {
   features: string[];
   image: string;
   gallery: string[];
+  model3dUrl?: string | null;
+  colors: string[];
   pricePesewas: number | null;
   stockStatus: StockStatus;
   imageAlt: string;
@@ -44,6 +50,8 @@ type ProductRow = {
   features: string;
   image: string;
   gallery: string;
+  model_3d_url?: string | null;
+  colors?: string | null;
   price_pesewas: number | null;
   stock_status: string;
   image_alt: string;
@@ -76,6 +84,8 @@ function mapRow(row: ProductRow): Product {
     features: parseList(row.features),
     image: row.image,
     gallery: parseList(row.gallery),
+    model3dUrl: row.model_3d_url || null,
+    colors: parseList(row.colors ?? "[]"),
     pricePesewas:
       typeof row.price_pesewas === "number" && row.price_pesewas > 0 ? row.price_pesewas : null,
     stockStatus: isStockStatus(row.stock_status) ? row.stock_status : DEFAULT_STOCK_STATUS,
@@ -205,6 +215,16 @@ export function parseProductInput(raw: unknown): { ok: true; value: ProductInput
   const fits = body.fits.filter((f): f is PhoneGroupId => typeof f === "string" && FIT_SET.has(f));
   if (fits.length < 1) return { ok: false, error: "Choose at least one phone family." };
 
+  const rawModel3d = typeof body.model3dUrl === "string" ? body.model3dUrl.trim() : null;
+  const model3dUrl = rawModel3d && rawModel3d.length <= 500 ? rawModel3d : null;
+
+  const rawColors = Array.isArray(body.colors) ? body.colors : [];
+  const colors = rawColors
+    .filter((c): c is string => typeof c === "string")
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .slice(0, 10);
+
   return {
     ok: true,
     value: {
@@ -214,6 +234,8 @@ export function parseProductInput(raw: unknown): { ok: true; value: ProductInput
       features,
       image,
       gallery,
+      model3dUrl,
+      colors,
       pricePesewas,
       stockStatus,
       imageAlt,
@@ -230,8 +252,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
   const sortOrder = (row?.max ?? 0) + 1;
 
   await DB.prepare(
-    `INSERT INTO products (id, slug, name, category, description, features, image, gallery, price_pesewas, stock_status, image_alt, fits, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO products (id, slug, name, category, description, features, image, gallery, model_3d_url, colors, price_pesewas, stock_status, image_alt, fits, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -242,6 +264,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       JSON.stringify(input.features),
       input.image,
       JSON.stringify(input.gallery),
+      input.model3dUrl ?? null,
+      JSON.stringify(input.colors ?? []),
       input.pricePesewas,
       input.stockStatus,
       input.imageAlt,
@@ -262,7 +286,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
 
   await DB.prepare(
     `UPDATE products
-     SET name = ?, category = ?, description = ?, features = ?, image = ?, gallery = ?, price_pesewas = ?, stock_status = ?, image_alt = ?, fits = ?, updated_at = CURRENT_TIMESTAMP
+     SET name = ?, category = ?, description = ?, features = ?, image = ?, gallery = ?, model_3d_url = ?, colors = ?, price_pesewas = ?, stock_status = ?, image_alt = ?, fits = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
   )
     .bind(
@@ -272,6 +296,8 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
       JSON.stringify(input.features),
       input.image,
       JSON.stringify(input.gallery),
+      input.model3dUrl ?? null,
+      JSON.stringify(input.colors ?? []),
       input.pricePesewas,
       input.stockStatus,
       input.imageAlt,
@@ -313,7 +339,7 @@ export async function deleteProduct(id: string): Promise<boolean> {
   if (!existing) return false;
 
   await DB.prepare("DELETE FROM products WHERE id = ?").bind(id).run();
-  await removeMedia([existing.image, ...existing.gallery]);
+  await removeMedia([existing.image, ...existing.gallery, existing.model3dUrl ?? ""]);
 
   return true;
 }

@@ -28,6 +28,22 @@ export default function BulkOrderForm({ product }: { product: string }) {
     }
     setError("");
     setSent(true);
+
+    fetch("/api/enquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "bulk_order",
+        name: buyer.trim() || "Wholesale Buyer",
+        email: "wholesale@nobyst.com",
+        phone: null,
+        topic: "Bulk order inquiry",
+        message: message.trim(),
+        productName: product,
+        quantity: parseInt(qty, 10) || 5,
+      }),
+    }).catch((err) => console.warn("Failed to persist bulk order:", err));
+
     window.open(whatsappLink(message), "_blank", "noopener,noreferrer");
   }
 

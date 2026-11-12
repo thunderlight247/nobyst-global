@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import ProductForm from "@/components/admin/ProductForm";
@@ -52,14 +53,22 @@ export default function AdminCatalogue({ initialProducts }: { initialProducts: P
             sign-in yet.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setEditor("new")}
-          className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-navy px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-royal"
-        >
-          <Plus size={17} aria-hidden />
-          Add product
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/dashboard"
+            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full border border-navy/20 bg-white px-5 py-3 text-sm font-bold text-navy transition-colors hover:border-royal hover:text-royal"
+          >
+            Payload Operations &rarr;
+          </Link>
+          <button
+            type="button"
+            onClick={() => setEditor("new")}
+            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-navy px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-royal"
+          >
+            <Plus size={17} aria-hidden />
+            Add product
+          </button>
+        </div>
       </div>
 
       {status && (

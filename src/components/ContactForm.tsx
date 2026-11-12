@@ -43,6 +43,20 @@ export default function ContactForm() {
     const wa = whatsappLink(`Hello ${site.short}, I would like to make an enquiry.\n\n${body}`);
     const mail = mailtoLink(`${data.topic} — ${data.name.trim()}`, body);
 
+    // Save asynchronously to D1 enquiries collection
+    fetch("/api/enquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "contact",
+        name: data.name.trim(),
+        email: data.email.trim(),
+        phone: data.phone?.trim() || null,
+        topic: data.topic,
+        message: data.message.trim(),
+      }),
+    }).catch((err) => console.warn("Failed to persist enquiry to D1:", err));
+
     setErrors({});
     setLinks({ wa, mail });
     form.reset();

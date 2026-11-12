@@ -5,6 +5,7 @@ import SmoothScroll from "@/components/SmoothScroll";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
+import { GlobalWebGLProvider } from "@/components/GlobalCanvas";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -47,10 +48,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <SmoothScroll>
-          <Header />
-          <main id="main">{children}</main>
-          <Footer />
-          <WhatsAppFloat />
+          <GlobalWebGLProvider>
+            <Header />
+            <main id="main">{children}</main>
+            <Footer />
+            <WhatsAppFloat />
+          </GlobalWebGLProvider>
         </SmoothScroll>
       </body>
     </html>

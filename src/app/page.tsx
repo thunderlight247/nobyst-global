@@ -2,11 +2,15 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, Hourglass, MessageCircle } from "lucide-react";
 import { whatsappLink } from "@/lib/contact-links";
 import HeroRing from "@/components/HeroRing";
+import dynamic from "next/dynamic";
 import SmartImage from "@/components/SmartImage";
 import type { ImageKey } from "@/data/images";
 import Reveal from "@/components/Reveal";
 import { Icon } from "@/lib/icons";
 import { site, current, future, values, categories } from "@/data/site";
+
+// three.js is large, so the 3D scene is split into its own chunk and loaded after first paint.
+const HeroScene = dynamic(() => import("@/components/HeroScene"), { ssr: false });
 
 export default function Home() {
   return (
@@ -102,6 +106,9 @@ export default function Home() {
               </div>
               <div className="hidden lg:block">
                 <HeroRing />
+              </div>
+              <div className="relative mb-4 hidden h-56 lg:block">
+                <HeroScene />
               </div>
               <div className="relative rounded-2xl border border-neutral-200/20 bg-white/[0.07] p-5 shadow-2xl backdrop-blur-sm sm:p-7">
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold">

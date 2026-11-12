@@ -10,6 +10,7 @@ import StockBadge from "@/components/StockBadge";
 import { formatPrice } from "@/lib/catalogue";
 import { whatsappLink } from "@/lib/contact-links";
 import { motion } from "framer-motion";
+import { useNobystStore } from "@/store/useStore";
 
 // Phones are devices, not accessories for a phone, so they stay out of the model filter.
 const DEVICE_CATEGORY = "Phones & devices";
@@ -21,11 +22,25 @@ export default function ProductBrowser({
   products: Product[];
   initialCategory?: string;
 }) {
+  const storeCategory = useNobystStore((s) => s.selectedCategory);
+  const setStoreCategory = useNobystStore((s) => s.setSelectedCategory);
+
   const [q, setQ] = useState("");
-  const [cat, setCat] = useState<string>(
-    initialCategory && (categories as readonly string[]).includes(initialCategory) ? initialCategory : "All"
-  );
+  const [cat, setCat] = useState<string>(() => {
+    if (initialCategory && (categories as readonly string[]).includes(initialCategory)) {
+      return initialCategory;
+    }
+    if (storeCategory && storeCategory !== "All") {
+      return storeCategory;
+    }
+    return "All";
+  });
   const [phone, setPhone] = useState<PhoneGroupId | "all">("all");
+
+  const handleCategoryChange = (newCat: string) => {
+    setCat(newCat);
+    setStoreCategory(newCat);
+  };
 
   const activePhone = phoneGroups.find((g) => g.id === phone);
 
@@ -45,7 +60,7 @@ export default function ProductBrowser({
 
   const reset = () => {
     setQ("");
-    setCat("All");
+    handleCategoryChange("All");
     setPhone("all");
   };
 
@@ -104,7 +119,7 @@ export default function ProductBrowser({
                 key={c}
                 type="button"
                 aria-pressed={isSelected}
-                onClick={() => setCat(c)}
+                onClick={() => handleCategoryChange(c)}
                 className={`min-h-[44px] shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 active:scale-95 sm:px-5 sm:text-sm ${
                   isSelected
                     ? "bg-navy text-white shadow-md"
