@@ -1,145 +1,17 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Hourglass, MessageCircle } from "lucide-react";
-import { whatsappLink } from "@/lib/contact-links";
-import HeroRing from "@/components/HeroRing";
-import dynamic from "next/dynamic";
+import { ArrowRight, CheckCircle2, Hourglass } from "lucide-react";
+import HeroSection from "@/components/HeroSection";
 import SmartImage from "@/components/SmartImage";
 import type { ImageKey } from "@/data/images";
 import Reveal from "@/components/Reveal";
 import { Icon } from "@/lib/icons";
 import { site, current, future, values, categories } from "@/data/site";
 
-// three.js is large, so the 3D scene is split into its own chunk and loaded after first paint.
-const HeroScene = dynamic(() => import("@/components/HeroScene"), { ssr: false });
-
 export default function Home() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative isolate overflow-hidden bg-navy text-white">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(110%_85%_at_100%_0%,#20349B_0%,transparent_58%)] opacity-80"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(75%_65%_at_0%_100%,#101F78_0%,transparent_62%)]"
-        />
-        <div aria-hidden className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-gold/10 to-transparent" />
-
-        <div className="relative mx-auto max-w-6xl px-5 pb-12 pt-12 sm:px-6 sm:pb-20 sm:pt-20 lg:px-8 lg:pb-24 lg:pt-24">
-          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-6">
-            <div className="lg:col-span-7 lg:pr-8">
-              <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold sm:text-xs">
-                <span>{site.name}</span>
-                <span aria-hidden className="h-1 w-1 rounded-full bg-gold/60" />
-                <span className="text-white/55">{site.location}</span>
-              </p>
-
-              <h1 className="mt-5 max-w-xl font-display text-[2rem] font-extrabold leading-[1.07] tracking-tight text-balance sm:text-5xl lg:text-[3.4rem]">
-                Building trust.
-                <br />
-                Delivering solutions.
-                <br />
-                <span className="text-gold">Growing together.</span>
-              </h1>
-
-              <div aria-hidden className="mt-6 h-px w-16 bg-gold/70" />
-
-              <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-white/80 text-pretty sm:text-lg">
-                {site.intro}
-              </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <a
-                  href={whatsappLink(`Hello ${site.short}, I would like to make an enquiry.`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-white hover:text-navy hover:shadow-xl active:scale-[0.98] sm:w-auto sm:text-base"
-                >
-                  <MessageCircle size={18} aria-hidden />
-                  Chat with us on WhatsApp
-                </a>
-                <Link
-                  href="/businesses"
-                  className="group inline-flex min-h-[48px] items-center gap-2 rounded-full border border-white/25 bg-white/5 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm transition-all duration-200 hover:border-white hover:bg-white/15 active:scale-[0.98] sm:text-base"
-                >
-                  Explore our businesses
-                  <ArrowRight
-                    size={18}
-                    aria-hidden
-                    className="transition-transform duration-200 group-hover:translate-x-1"
-                  />
-                </Link>
-                <Link
-                  href="/about"
-                  className="inline-flex min-h-[48px] items-center rounded-full border border-white/25 bg-white/5 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm transition-all duration-200 hover:border-white hover:bg-white/15 active:scale-[0.98] sm:text-base"
-                >
-                  About the company
-                </Link>
-                <Link
-                  href="/partnerships"
-                  className="group inline-flex min-h-[44px] items-center gap-1.5 px-1 text-sm font-bold text-white/80 transition-colors hover:text-gold"
-                >
-                  Partner with us
-                  <ArrowRight
-                    size={16}
-                    aria-hidden
-                    className="transition-transform duration-200 group-hover:translate-x-1"
-                  />
-                </Link>
-              </div>
-            </div>
-
-            {/* Company snapshot (desktop) */}
-            <div className="relative lg:col-span-5">
-              <div className="mb-4 grid h-56 grid-cols-3 grid-rows-2 gap-2 sm:h-64 sm:gap-3">
-                <div className="relative col-span-2 row-span-2 overflow-hidden rounded-2xl">
-                  <SmartImage name="accessories" className="h-full w-full" sizes="40vw" />
-                </div>
-                <div className="relative overflow-hidden rounded-2xl">
-                  <SmartImage name="phoneDetail" className="h-full w-full" sizes="20vw" />
-                </div>
-                <div className="relative overflow-hidden rounded-2xl">
-                  <SmartImage name="payments" className="h-full w-full" sizes="20vw" />
-                </div>
-              </div>
-              <div className="hidden lg:block">
-                <HeroRing />
-              </div>
-              <div className="relative mb-4 hidden h-56 lg:block">
-                <HeroScene />
-              </div>
-              <div className="relative rounded-2xl border border-neutral-200/20 bg-white/[0.07] p-5 shadow-2xl backdrop-blur-sm sm:p-7">
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
-                  Company snapshot
-                </p>
-                <ul className="mt-5 space-y-4">
-                  {current.map((c) => (
-                    <li key={c.title} className="flex items-start gap-3">
-                      <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-gold" aria-hidden />
-                      <span>
-                        <span className="block text-sm font-bold text-white">{c.title}</span>
-                        <span className="mt-0.5 block text-xs text-white/55">Operating today</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-5 border-t border-white/10 pt-5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">
-                    Planned expansion
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-white/80">
-                    General trading, import &amp; export, agriculture-related trade, technology and
-                    logistics.
-                  </p>
-                  <p className="mt-2 text-[11px] text-white/45">Planned only — not yet operating.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Hero with auto-changing phone and device showcase */}
+      <HeroSection />
 
       {/* Shop by category */}
       <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6 sm:pt-20 lg:px-8">
