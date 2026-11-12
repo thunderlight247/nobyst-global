@@ -29,22 +29,22 @@ export interface HeroSlide {
 const HERO_SLIDES: HeroSlide[] = [
   {
     id: "smartphones",
-    image: "/images/phone-detail.jpg",
-    alt: "Flagship smartphones front and back inspection",
-    badge: "Phones & Devices",
+    image: "/images/products/smartphone-12-256.jpg",
+    alt: "Flagship smartphone display with brilliant OLED screen",
+    badge: "Flagship Smartphones",
     caption: "Latest smartphones and verified devices in Techiman",
   },
   {
     id: "cables",
-    image: "/images/accessories.jpg",
-    alt: "Multi-tip fast charging cable set and adapters",
+    image: "/images/products/5-in-1-multi-charging-cable.jpg",
+    alt: "5-in-1 fast charging nylon braided cable",
     badge: "Universal Cables",
     caption: "Heavy-duty 5-in-1 fast charging & data sync",
   },
   {
     id: "chargers",
     image: "/images/products/65w-fast-charger.jpg",
-    alt: "65W Fast dual-port wall charger adapter",
+    alt: "65W Fast dual-port GaN wall charger adapter",
     badge: "GaN Fast Power",
     caption: "Overheat-protected rapid charging wall plugs",
   },
@@ -56,11 +56,11 @@ const HERO_SLIDES: HeroSlide[] = [
     caption: "Long-lasting battery with deep bass & clear calls",
   },
   {
-    id: "payments",
-    image: "/images/payments.jpg",
-    alt: "Techiman mobile money and cash services counter",
-    badge: "Mobile Money Agency",
-    caption: "Reliable everyday cash and electronic transfers",
+    id: "phones-devices",
+    image: "/images/phone-detail.jpg",
+    alt: "Range of smartphones inspected from front and back",
+    badge: "Phones & Devices",
+    caption: "Quality checked mobile phones and smart accessories",
   },
 ];
 
@@ -157,7 +157,7 @@ export default function HeroSection() {
                   fill
                   priority={index === 0}
                   sizes="100vw"
-                  className="object-cover object-center sm:object-right"
+                  className="object-cover object-center sm:object-right brightness-[0.98] contrast-[1.06] saturate-[1.05]"
                 />
               </div>
             </div>
@@ -165,18 +165,18 @@ export default function HeroSection() {
         })}
       </div>
 
-      {/* READABILITY & CONTRAST GRADIENT OVERLAYS (Mobile-optimized) */}
+      {/* REFINED READABILITY OVERLAYS (Translucent so device photos are clear & vivid) */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-950/95 via-slate-950/85 to-navy/95 sm:bg-gradient-to-r sm:from-slate-950/95 sm:via-slate-950/80 sm:to-slate-950/45"
+        className="absolute inset-0 -z-10 bg-gradient-to-t from-navy/90 via-navy/50 to-navy/30 sm:bg-gradient-to-r sm:from-navy/95 sm:via-navy/60 sm:to-transparent"
       />
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-royal-900/35 via-transparent to-navy/70"
+        className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,_rgba(32,52,155,0.25)_0%,_transparent_65%)]"
       />
       <div
         aria-hidden
-        className="absolute inset-x-0 bottom-0 -z-10 h-28 bg-gradient-to-t from-navy to-transparent"
+        className="absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-navy to-transparent"
       />
 
       {/* MAIN HERO CONTENT */}
@@ -223,7 +223,7 @@ export default function HeroSection() {
               </p>
             </div>
 
-            <h1 className="font-display text-[1.85rem] leading-[1.12] font-extrabold tracking-tight text-balance sm:mt-5 sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]">
+            <h1 className="font-display text-[1.85rem] leading-[1.12] font-extrabold tracking-tight text-balance drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)] sm:mt-5 sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]">
               Building trust.
               <br />
               Delivering solutions.
@@ -231,9 +231,9 @@ export default function HeroSection() {
               <span className="text-gold">Growing together.</span>
             </h1>
 
-            <div aria-hidden className="mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-gold to-amber-500 sm:mt-6 sm:w-16" />
+            <div aria-hidden className="mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-gold to-amber-500 shadow-sm sm:mt-6 sm:w-16" />
 
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/85 text-pretty sm:mt-5 sm:text-lg">
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/90 text-pretty drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)] sm:mt-5 sm:text-lg">
               {site.intro}
             </p>
 

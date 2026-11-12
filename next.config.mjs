@@ -6,6 +6,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Resource limits to prevent memory spikes & system freezing on machines with <= 4GB RAM
+  experimental: {
+    cpus: 1,
+    workerThreads: false,
+  },
+  webpack: (config) => {
+    config.parallelism = 1;
+    return config;
+  },
 };
 
 export default nextConfig;
