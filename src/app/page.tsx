@@ -7,11 +7,15 @@ import Reveal from "@/components/Reveal";
 import { Icon } from "@/lib/icons";
 import { site, current, future, values } from "@/data/site";
 import { listCategories } from "@/lib/categories";
+import { getContent } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const categories = (await listCategories()).filter((c) => !c.parentId);
+  const [categories, content] = await Promise.all([
+    listCategories().then((all) => all.filter((c) => !c.parentId)),
+    getContent(),
+  ]);
   return (
     <>
       {/* Hero with auto-changing phone and device showcase */}
@@ -20,7 +24,7 @@ export default async function Home() {
       {/* Shop by category */}
       <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6 sm:pt-20 lg:px-8">
         <div className="flex items-end justify-between gap-4">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-navy sm:text-4xl">Shop by category</h2>
+          <h2 className="font-display text-3xl font-bold tracking-tight text-navy sm:text-4xl">{content["home.category.heading"]}</h2>
           <Link href="/products" className="shrink-0 text-sm font-bold text-royal hover:text-navy">
             View all
           </Link>
@@ -52,7 +56,7 @@ export default async function Home() {
           Our current operations
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-navy/75 sm:text-base">
-          Two active divisions, serving customers in Techiman and the wider Bono East Region.
+          {content["home.operating.intro"]}
         </p>
 
         <Reveal className="mt-8 grid gap-6 sm:mt-10 md:grid-cols-5">
@@ -125,7 +129,7 @@ export default async function Home() {
             Where we are heading
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-navy/75 sm:text-base">
-            {site.vision} These business areas form our expansion plan and are{" "}
+            {site.vision} {content["home.planned.intro"]} These business areas are{" "}
             <strong className="font-bold text-navy">not operating today</strong>.
           </p>
 

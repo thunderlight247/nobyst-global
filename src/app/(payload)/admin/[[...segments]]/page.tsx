@@ -3,6 +3,7 @@ import { listProducts } from "@/lib/products";
 import { listEnquiries } from "@/lib/enquiries";
 import { listPaidOrders } from "@/lib/orders";
 import { listCategories } from "@/lib/categories";
+import { getContent } from "@/lib/content";
 import PayloadAdminApp from "@/components/admin/PayloadAdminApp";
 
 export const dynamic = "force-dynamic";
@@ -17,11 +18,12 @@ export default async function PayloadAdminPage({
 }: {
   params: { segments?: string[] };
 }) {
-  const [products, enquiries, orders, categories] = await Promise.all([
+  const [products, enquiries, orders, categories, content] = await Promise.all([
     listProducts().catch(() => []),
     listEnquiries().catch(() => []),
     listPaidOrders().catch(() => []),
     listCategories().catch(() => []),
+    getContent(),
   ]);
 
   const activeCollection = params.segments?.[0] || "dashboard";
@@ -33,6 +35,7 @@ export default async function PayloadAdminPage({
         initialEnquiries={enquiries}
         initialOrders={orders}
         initialCategories={categories}
+        initialContent={content}
         initialSegment={activeCollection}
       />
     </main>

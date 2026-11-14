@@ -25,6 +25,7 @@ import {
   UserCheck,
   X,
   FileBox,
+  FileText,
 } from "lucide-react";
 import type { Product } from "@/lib/products";
 import type { Enquiry, EnquiryStatus } from "@/lib/enquiries";
@@ -35,13 +36,16 @@ import { formatPrice } from "@/lib/catalogue";
 import StockBadge from "@/components/StockBadge";
 import ProductForm from "@/components/admin/ProductForm";
 import CategoryEditor from "@/components/admin/CategoryEditor";
+import ContentEditor from "@/components/admin/ContentEditor";
 import { whatsappLink } from "@/lib/contact-links";
+import type { ContentValues } from "@/lib/content-blocks";
 
 type Props = {
   initialProducts: Product[];
   initialEnquiries: Enquiry[];
   initialOrders: PaidOrder[];
   initialCategories: CategoryNode[];
+  initialContent: ContentValues;
   initialSegment: string;
 };
 
@@ -52,6 +56,7 @@ export default function PayloadAdminApp({
   initialEnquiries,
   initialOrders,
   initialCategories,
+  initialContent,
   initialSegment,
 }: Props) {
   const router = useRouter();
@@ -59,7 +64,7 @@ export default function PayloadAdminApp({
   const categoryNames = categories.map((c) => c.name);
   const [role, setRole] = useState<Role>("admin");
   const [tab, setTab] = useState<string>(
-    ["dashboard", "products", "categories", "enquiries", "orders", "media"].includes(initialSegment)
+    ["dashboard", "products", "categories", "content", "enquiries", "orders", "media"].includes(initialSegment)
       ? initialSegment
       : "dashboard"
   );
@@ -183,6 +188,7 @@ export default function PayloadAdminApp({
             { id: "dashboard", label: "Dashboard", icon: Layers, badge: null },
             { id: "products", label: "Products", icon: Boxes, badge: products.length },
             { id: "categories", label: "Categories", icon: FolderTree, badge: categories.length },
+            { id: "content", label: "Page Text", icon: FileText, badge: null },
             { id: "enquiries", label: "Enquiries", icon: Inbox, badge: newEnquiriesCount ? `${newEnquiriesCount} new` : null },
             { id: "orders", label: "Orders", icon: ShoppingBag, badge: initialOrders.length ? `${initialOrders.length} paid` : null },
             { id: "media", label: "Media & 3D Assets", icon: FileBox, badge: models3dCount ? `${models3dCount} 3D` : null },
@@ -611,6 +617,11 @@ export default function PayloadAdminApp({
                 })}
             </div>
           </div>
+        )}
+
+        {/* PAGE TEXT (CMS blocks) */}
+        {tab === "content" && (
+          <ContentEditor initialContent={initialContent} canEdit={role === "admin"} onNotify={notify} />
         )}
 
         {/* TAB 4: ENQUIRIES COLLECTION */}
