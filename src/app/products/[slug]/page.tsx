@@ -20,6 +20,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return {
     title: product.name,
     description: `${product.description} Compatibility and bulk orders from ${site.name}, Techiman.`,
+    alternates: { canonical: `/products/${product.slug}` },
     openGraph: {
       title: `${product.name} | ${site.name}`,
       description: product.description,
@@ -41,8 +42,34 @@ export default async function ProductPage({ params }: { params: { slug: string }
     ...product.gallery.map((src) => ({ src, alt: "" })),
   ];
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description,
+    image: new URL(product.image, site.url).toString(),
+    category: product.category,
+    brand: { "@type": "Brand", name: site.name },
+    url: `${site.url}/products/${product.slug}`,
+    ...(price
+      ? {
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "GHS",
+            price: (product.pricePesewas ?? 0) / 100,
+            availability: "https://schema.org/InStock",
+            url: `${site.url}/products/${product.slug}`,
+          },
+        }
+      : {}),
+  };
+
   return (
     <section className="mx-auto max-w-6xl px-5 py-10 sm:px-6 sm:py-16 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <Link
         href="/products"
         className="inline-flex min-h-[44px] items-center gap-2 text-xs font-bold text-navy/70 transition-colors hover:text-royal"

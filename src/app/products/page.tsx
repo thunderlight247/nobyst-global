@@ -26,10 +26,13 @@ export default async function Products({
   const feature =
     products.find((p) => p.slug === "over-ear-wireless-headphones") ?? products[0] ?? null;
 
-  const tiles = categories.map((cat) => {
-    const inCategory = products.filter((p) => p.category === cat.name);
-    return { name: cat.name, parentId: cat.parentId, count: inCategory.length, image: inCategory[0]?.image ?? null };
-  });
+  const tiles = categories
+    .filter((cat) => !cat.parentId)
+    .map((cat) => {
+      const names = new Set([cat.name, ...categories.filter((c) => c.parentId === cat.id).map((c) => c.name)]);
+      const inCategory = products.filter((p) => names.has(p.category));
+      return { name: cat.name, count: inCategory.length, image: inCategory[0]?.image ?? null };
+    });
 
   return (
     <>
