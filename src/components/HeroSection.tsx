@@ -156,7 +156,7 @@ export default function HeroSection() {
                   fill
                   priority={index === 0}
                   sizes="100vw"
-                  className="object-cover object-center sm:object-right brightness-[0.98] contrast-[1.06] saturate-[1.05]"
+                  className="object-cover object-[center_20%] sm:object-right brightness-[1.02] contrast-[1.06] saturate-[1.1]"
                 />
               </div>
             </div>
@@ -167,7 +167,7 @@ export default function HeroSection() {
       {/* REFINED READABILITY OVERLAYS (Translucent so device photos are clear & vivid) */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-gradient-to-t from-navy/90 via-navy/50 to-navy/30 sm:bg-gradient-to-r sm:from-navy/95 sm:via-navy/60 sm:to-transparent"
+        className="absolute inset-0 -z-10 bg-gradient-to-b from-navy/55 via-navy/25 to-navy/95 sm:bg-gradient-to-r sm:from-navy/95 sm:via-navy/60 sm:to-transparent"
       />
       <div
         aria-hidden
