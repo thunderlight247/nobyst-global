@@ -36,6 +36,12 @@ export type CloudflareEnv = {
   MEDIA: R2Bucket;
   /** Paystack secret key, set with `wrangler secret put PAYSTACK_SECRET_KEY`. Server-only. */
   PAYSTACK_SECRET_KEY?: string;
+  /** Resend API key for transactional email. Set with `wrangler secret put RESEND_API_KEY`. */
+  RESEND_API_KEY?: string;
+  /** Verified sender, e.g. "NOBYST GLOBAL <no-reply@yourdomain.com>". Plain var in wrangler. */
+  EMAIL_FROM?: string;
+  /** Public site origin used in email links, e.g. https://nobyst-global.example.workers.dev */
+  SITE_URL?: string;
 };
 
 /** Bindings from wrangler.jsonc (local miniflare in dev, Workers in production). */

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { CheckoutError, createCheckout, type CheckoutInput } from "@/lib/orders";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { authorizationUrl, reference } = await createCheckout(input, new URL(request.url).origin);
+    const user = await getCurrentUser();
+    const { authorizationUrl, reference } = await createCheckout(
+      input,
+      new URL(request.url).origin,
+      user?.id ?? null
+    );
     return NextResponse.json({ authorizationUrl, reference });
   } catch (err) {
     if (err instanceof CheckoutError) {

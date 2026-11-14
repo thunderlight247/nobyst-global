@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Inbox, Menu, MessageCircle, Search, ShoppingBag, X } from "lucide-react";
+import { Inbox, Menu, MessageCircle, Search, ShoppingBag, UserRound, X } from "lucide-react";
 import { useNobystStore } from "@/store/useStore";
 import { nav, site } from "@/data/site";
 
@@ -120,6 +120,14 @@ export default function Header() {
 
           {/* Cart link with live item count */}
           <CartLink />
+
+          <Link
+            href="/account"
+            className="hidden h-10 items-center gap-1.5 rounded-full border border-navy/15 bg-white px-3 text-xs font-bold text-navy shadow-sm transition-colors hover:border-royal hover:text-royal md:inline-flex"
+          >
+            <UserRound size={15} aria-hidden />
+            <span>Account</span>
+          </Link>
 
           {/* Quick inquiries / admin link */}
           <Link

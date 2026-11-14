@@ -22,6 +22,10 @@
       "bucket_name": "nobyst-media"
     }
   ],
+  "vars": {
+    "EMAIL_FROM": "NOBYST GLOBAL <onboarding@resend.dev>",
+    "SITE_URL": "https://nobyst-global.nobystecommerce.workers.dev"
+  },
   "observability": {
     "enabled": true
   }

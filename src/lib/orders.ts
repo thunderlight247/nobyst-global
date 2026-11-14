@@ -24,7 +24,8 @@ export class CheckoutError extends Error {}
  */
 export async function createCheckout(
   input: CheckoutInput,
-  origin: string
+  origin: string,
+  userId: string | null = null
 ): Promise<{ authorizationUrl: string; reference: string }> {
   const env = await getEnv();
   if (!env.PAYSTACK_SECRET_KEY) {
@@ -63,10 +64,10 @@ export async function createCheckout(
   const reference = `NBG-${Date.now().toString(36)}-${orderId.slice(0, 8)}`.toUpperCase();
 
   await env.DB.prepare(
-    `INSERT INTO orders (id, reference, status, email, name, phone, total_pesewas, currency)
-     VALUES (?, ?, 'pending', ?, ?, ?, ?, 'GHS')`
+    `INSERT INTO orders (id, reference, status, email, name, phone, total_pesewas, currency, user_id)
+     VALUES (?, ?, 'pending', ?, ?, ?, ?, 'GHS', ?)`
   )
-    .bind(orderId, reference, input.email, input.name, input.phone, totalPesewas)
+    .bind(orderId, reference, input.email, input.name, input.phone, totalPesewas, userId)
     .run();
 
   for (const l of lines) {
@@ -154,6 +155,51 @@ export async function listPaidOrders(): Promise<PaidOrder[]> {
       quantity: r.quantity,
       unitPesewas: r.unit_pesewas,
     });
+    byOrder.set(r.order_id, list);
+  }
+
+  return orders.map((o) => ({
+    id: o.id,
+    reference: o.reference,
+    name: o.name,
+    email: o.email,
+    phone: o.phone,
+    totalPesewas: o.total_pesewas,
+    paidAt: o.paid_at,
+    items: byOrder.get(o.id) ?? [],
+  }));
+}
+
+/** Paid orders placed while signed in as this user, newest first. */
+export async function listOrdersForUser(userId: string): Promise<PaidOrder[]> {
+  const { DB } = await getEnv();
+  const { results: orders } = await DB.prepare(
+    "SELECT id, reference, name, email, phone, total_pesewas, paid_at FROM orders WHERE status = 'paid' AND user_id = ? ORDER BY paid_at DESC LIMIT 100"
+  )
+    .bind(userId)
+    .all<{
+      id: string;
+      reference: string;
+      name: string;
+      email: string;
+      phone: string;
+      total_pesewas: number;
+      paid_at: string | null;
+    }>();
+  if (orders.length === 0) return [];
+
+  const ids = orders.map((o) => o.id);
+  const placeholders = ids.map(() => "?").join(",");
+  const { results: rows } = await DB.prepare(
+    `SELECT order_id, product_name, color, quantity, unit_pesewas FROM order_items WHERE order_id IN (${placeholders})`
+  )
+    .bind(...ids)
+    .all<{ order_id: string; product_name: string; color: string; quantity: number; unit_pesewas: number }>();
+
+  const byOrder = new Map<string, PaidOrder["items"]>();
+  for (const r of rows) {
+    const list = byOrder.get(r.order_id) ?? [];
+    list.push({ productName: r.product_name, color: r.color, quantity: r.quantity, unitPesewas: r.unit_pesewas });
     byOrder.set(r.order_id, list);
   }
 
