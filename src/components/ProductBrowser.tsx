@@ -3,9 +3,10 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Search, MessageCircle, AlertCircle, Smartphone, ChevronDown, ArrowRight } from "lucide-react";
-import { categories, phoneGroups, site } from "@/data/site";
+import { phoneGroups, site } from "@/data/site";
 import type { PhoneGroupId } from "@/data/site";
 import type { Product } from "@/lib/products";
+import type { CategoryNode } from "@/lib/categories";
 import StockBadge from "@/components/StockBadge";
 import { formatPrice } from "@/lib/catalogue";
 import { whatsappLink } from "@/lib/contact-links";
@@ -17,17 +18,27 @@ const DEVICE_CATEGORY = "Phones & devices";
 
 export default function ProductBrowser({
   products,
+  categories,
   initialCategory,
 }: {
   products: Product[];
+  categories: CategoryNode[];
   initialCategory?: string;
 }) {
+  const categoryNames = categories.map((c) => c.name);
+  // Top-level categories in order, each followed by its sub-categories.
+  const categoryPills = categories
+    .filter((c) => !c.parentId)
+    .flatMap((parent) => [
+      { node: parent, indent: false },
+      ...categories.filter((c) => c.parentId === parent.id).map((node) => ({ node, indent: true })),
+    ]);
   const storeCategory = useNobystStore((s) => s.selectedCategory);
   const setStoreCategory = useNobystStore((s) => s.setSelectedCategory);
 
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>(() => {
-    if (initialCategory && (categories as readonly string[]).includes(initialCategory)) {
+    if (initialCategory && categoryNames.includes(initialCategory)) {
       return initialCategory;
     }
     if (storeCategory && storeCategory !== "All") {
@@ -142,21 +153,24 @@ export default function ProductBrowser({
           aria-label="Filter products by category"
           className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 pt-0.5 no-scrollbar sm:mx-0 sm:flex-wrap sm:gap-2.5 sm:overflow-visible sm:px-0"
         >
-          {["All", ...categories].map((c) => {
+          {[{ node: null, indent: false }, ...categoryPills].map(({ node, indent }) => {
+            const c = node ? node.name : "All";
             const isSelected = cat === c;
             return (
               <button
-                key={c}
+                key={node ? node.id : "All"}
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => handleCategoryChange(c)}
                 className={`min-h-[44px] shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 active:scale-95 sm:px-5 sm:text-sm ${
+                  indent ? "sm:ml-1 " : ""
+                }${
                   isSelected
                     ? "bg-navy text-white shadow-md"
                     : "bg-white text-navy/70 ring-1 ring-neutral-200/80 hover:text-royal hover:ring-royal/40"
                 }`}
               >
-                {c}
+                {indent ? `↳ ${c}` : c}
               </button>
             );
           })}

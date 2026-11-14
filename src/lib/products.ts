@@ -1,8 +1,9 @@
-import { categories, phoneGroups, type PhoneGroupId } from "@/data/site";
+import { phoneGroups, type PhoneGroupId } from "@/data/site";
 import { DEFAULT_STOCK_STATUS, isStockStatus, type StockStatus } from "./catalogue";
+import { listCategoryNames } from "./categories";
 import { getEnv } from "./cloudflare";
 
-export type Category = (typeof categories)[number];
+export type Category = string;
 
 export type Product = {
   id: string;
@@ -59,7 +60,6 @@ type ProductRow = {
   sort_order: number;
 };
 
-const CATEGORY_SET = new Set<string>(categories);
 const FIT_SET = new Set<string>(phoneGroups.map((g) => g.id));
 const MEDIA_PREFIX = "/api/media/";
 const MAX_GALLERY = 24;
@@ -74,12 +74,12 @@ function parseList(raw: string | null): string[] {
   }
 }
 
-function mapRow(row: ProductRow): Product {
+function mapRow(row: ProductRow, categoryNames: Set<string>): Product {
   return {
     id: row.id,
     slug: row.slug,
     name: row.name,
-    category: (CATEGORY_SET.has(row.category) ? row.category : categories[0]) as Category,
+    category: row.category,
     description: row.description,
     features: parseList(row.features),
     image: row.image,
@@ -100,19 +100,20 @@ export async function listProducts(): Promise<Product[]> {
   const { results } = await DB.prepare(
     "SELECT * FROM products ORDER BY sort_order ASC, name ASC"
   ).all<ProductRow>();
-  return results.map(mapRow);
+  const names = new Set(await listCategoryNames());
+  return results.map((row) => mapRow(row, names));
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const { DB } = await getEnv();
   const row = await DB.prepare("SELECT * FROM products WHERE slug = ?").bind(slug).first<ProductRow>();
-  return row ? mapRow(row) : null;
+  return row ? mapRow(row, new Set(await listCategoryNames())) : null;
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
   const { DB } = await getEnv();
   const row = await DB.prepare("SELECT * FROM products WHERE id = ?").bind(id).first<ProductRow>();
-  return row ? mapRow(row) : null;
+  return row ? mapRow(row, new Set(await listCategoryNames())) : null;
 }
 
 export async function listRelated(category: string, excludeId: string): Promise<Product[]> {
@@ -121,7 +122,8 @@ export async function listRelated(category: string, excludeId: string): Promise<
   )
     .bind(category, excludeId)
     .all<ProductRow>();
-  return results.map(mapRow);
+  const names = new Set(await listCategoryNames());
+  return results.map((row) => mapRow(row, names));
 }
 
 function slugify(input: string): string {
@@ -154,7 +156,7 @@ function parseImagePath(value: unknown): string | null {
 }
 
 /** Validates untrusted JSON from the admin form. */
-export function parseProductInput(raw: unknown): { ok: true; value: ProductInput } | { ok: false; error: string } {
+export async function parseProductInput(raw: unknown): Promise<{ ok: true; value: ProductInput } | { ok: false; error: string }> {
   if (!raw || typeof raw !== "object") return { ok: false, error: "Invalid request body." };
   const body = raw as Record<string, unknown>;
 
@@ -162,7 +164,9 @@ export function parseProductInput(raw: unknown): { ok: true; value: ProductInput
   if (name.length < 3 || name.length > 80) return { ok: false, error: "Name must be 3–80 characters." };
 
   const category = typeof body.category === "string" ? body.category : "";
-  if (!CATEGORY_SET.has(category)) return { ok: false, error: "Choose a valid category." };
+  if (!category || !(await listCategoryNames()).includes(category)) {
+    return { ok: false, error: "Choose a valid category." };
+  }
 
   const description = typeof body.description === "string" ? body.description.trim() : "";
   if (description.length < 5 || description.length > 400)
@@ -229,7 +233,7 @@ export function parseProductInput(raw: unknown): { ok: true; value: ProductInput
     ok: true,
     value: {
       name,
-      category: category as Category,
+      category,
       description,
       features,
       image,

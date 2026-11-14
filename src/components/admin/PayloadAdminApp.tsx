@@ -29,16 +29,19 @@ import {
 import type { Product } from "@/lib/products";
 import type { Enquiry, EnquiryStatus } from "@/lib/enquiries";
 import type { PaidOrder } from "@/lib/orders";
-import { categories, site } from "@/data/site";
+import type { CategoryNode } from "@/lib/categories";
+import { site } from "@/data/site";
 import { formatPrice } from "@/lib/catalogue";
 import StockBadge from "@/components/StockBadge";
 import ProductForm from "@/components/admin/ProductForm";
+import CategoryEditor from "@/components/admin/CategoryEditor";
 import { whatsappLink } from "@/lib/contact-links";
 
 type Props = {
   initialProducts: Product[];
   initialEnquiries: Enquiry[];
   initialOrders: PaidOrder[];
+  initialCategories: CategoryNode[];
   initialSegment: string;
 };
 
@@ -48,9 +51,12 @@ export default function PayloadAdminApp({
   initialProducts,
   initialEnquiries,
   initialOrders,
+  initialCategories,
   initialSegment,
 }: Props) {
   const router = useRouter();
+  const [categories, setCategories] = useState<CategoryNode[]>(initialCategories);
+  const categoryNames = categories.map((c) => c.name);
   const [role, setRole] = useState<Role>("admin");
   const [tab, setTab] = useState<string>(
     ["dashboard", "products", "categories", "enquiries", "orders", "media"].includes(initialSegment)
@@ -431,7 +437,7 @@ export default function PayloadAdminApp({
                 className="rounded-xl border border-navy/15 bg-white px-3 py-2 text-xs font-medium text-navy focus:border-royal focus:outline-none"
               >
                 <option value="All">All Categories</option>
-                {categories.map((c) => (
+                {categoryNames.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -541,41 +547,68 @@ export default function PayloadAdminApp({
               <span className="text-[10px] font-bold uppercase tracking-wider text-royal">Collection</span>
               <h1 className="font-display text-2xl font-extrabold text-navy sm:text-3xl">Categories</h1>
               <p className="mt-1 text-xs text-navy/60">
-                The 6 active retail accessory &amp; mobile money categories served in Techiman
+                Top-level categories and one level of sub-categories. Renaming a category updates its products.
               </p>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {categories.map((cat, i) => {
-                const count = products.filter((p) => p.category === cat).length;
-                return (
-                  <div
-                    key={cat}
-                    className="flex flex-col justify-between rounded-2xl border border-navy/10 bg-white p-5 shadow-sm"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="rounded-full bg-royal-100 px-2.5 py-0.5 text-[10px] font-bold text-royal">
-                          Category #{i + 1}
-                        </span>
-                        <span className="text-xs font-bold text-navy/60">{count} products</span>
-                      </div>
-                      <h3 className="mt-3 font-display text-lg font-bold text-navy">{cat}</h3>
-                    </div>
+            {role === "admin" && (
+              <CategoryEditor
+                categories={categories}
+                onChanged={(next, message) => {
+                  setCategories(next);
+                  notify(message);
+                  router.refresh();
+                }}
+                onError={(message) => notify(message)}
+              />
+            )}
 
-                    <div className="mt-4 border-t border-navy/5 pt-3">
-                      <Link
-                        href={`/products?category=${encodeURIComponent(cat)}`}
-                        target="_blank"
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-royal hover:underline"
-                      >
-                        <span>Browse category products</span>
-                        <ExternalLink size={12} />
-                      </Link>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {categories
+                .filter((cat) => !cat.parentId)
+                .map((cat, i) => {
+                  const children = categories.filter((c) => c.parentId === cat.id);
+                  const count = products.filter((p) => p.category === cat.name).length;
+                  return (
+                    <div
+                      key={cat.id}
+                      className="flex flex-col justify-between rounded-2xl border border-navy/10 bg-white p-5 shadow-sm"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="rounded-full bg-royal-100 px-2.5 py-0.5 text-[10px] font-bold text-royal">
+                            Category #{i + 1}
+                          </span>
+                          <span className="text-xs font-bold text-navy/60">{count} products</span>
+                        </div>
+                        <h3 className="mt-3 font-display text-lg font-bold text-navy">{cat.name}</h3>
+                        {children.length > 0 && (
+                          <ul className="mt-2 space-y-1 border-l-2 border-royal/20 pl-3">
+                            {children.map((child) => (
+                              <li key={child.id} className="text-xs text-navy/70">
+                                {child.name}{" "}
+                                <span className="text-navy/40">
+                                  ({products.filter((p) => p.category === child.name).length})
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      <div className="mt-4 border-t border-navy/5 pt-3">
+                        <Link
+                          href={`/products?category=${encodeURIComponent(cat.name)}`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-royal hover:underline"
+                        >
+                          <span>Browse category products</span>
+                          <ExternalLink size={12} />
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
         )}
@@ -792,6 +825,7 @@ export default function PayloadAdminApp({
       {editingProduct && (
         <ProductForm
           product={editingProduct === "new" ? null : editingProduct}
+          categories={categoryNames}
           onSaved={(saved) => {
             setProducts((prev) => {
               const idx = prev.findIndex((p) => p.id === saved.id);

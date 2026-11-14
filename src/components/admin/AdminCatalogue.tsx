@@ -11,7 +11,13 @@ import type { Product } from "@/lib/products";
 
 type Status = { kind: "ok" | "error"; text: string } | null;
 
-export default function AdminCatalogue({ initialProducts }: { initialProducts: Product[] }) {
+export default function AdminCatalogue({
+  initialProducts,
+  categories,
+}: {
+  initialProducts: Product[];
+  categories: string[];
+}) {
   const router = useRouter();
   const [editor, setEditor] = useState<Product | "new" | null>(null);
   const [status, setStatus] = useState<Status>(null);
@@ -157,6 +163,7 @@ export default function AdminCatalogue({ initialProducts }: { initialProducts: P
       {editor && (
         <ProductForm
           product={editor === "new" ? null : editor}
+          categories={categories}
           onClose={() => setEditor(null)}
           onSaved={(saved) => {
             setEditor(null);

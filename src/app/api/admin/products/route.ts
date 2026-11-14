@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json({ error: "The request body is not valid JSON." }, { status: 400 });
     }
-    const parsed = parseProductInput(raw);
+    const parsed = await parseProductInput(raw);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
     const product = await createProduct(parsed.value);

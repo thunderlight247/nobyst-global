@@ -5,9 +5,13 @@ import SmartImage from "@/components/SmartImage";
 import type { ImageKey } from "@/data/images";
 import Reveal from "@/components/Reveal";
 import { Icon } from "@/lib/icons";
-import { site, current, future, values, categories } from "@/data/site";
+import { site, current, future, values } from "@/data/site";
+import { listCategories } from "@/lib/categories";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const categories = (await listCategories()).filter((c) => !c.parentId);
   return (
     <>
       {/* Hero with auto-changing phone and device showcase */}
@@ -23,12 +27,12 @@ export default function Home() {
         </div>
         <ul className="mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
           {categories.map((cat) => (
-            <li key={cat}>
+            <li key={cat.id}>
               <Link
-                href={`/products?category=${encodeURIComponent(cat)}`}
+                href={`/products?category=${encodeURIComponent(cat.name)}`}
                 className="group flex min-h-[64px] sm:min-h-[72px] items-center justify-between gap-2 sm:gap-3 rounded-2xl border border-neutral-200/60 bg-white p-3 sm:p-4 text-xs sm:text-sm font-bold text-navy shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-royal/40 hover:text-royal hover:shadow-md"
               >
-                <span className="leading-tight">{cat}</span>
+                <span className="leading-tight">{cat.name}</span>
                 <ArrowRight size={15} aria-hidden className="shrink-0 transition-transform group-hover:translate-x-1 text-navy/40 group-hover:text-royal" />
               </Link>
             </li>

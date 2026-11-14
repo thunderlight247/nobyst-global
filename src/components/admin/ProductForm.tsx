@@ -2,19 +2,20 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AlertCircle, Loader2, Star, Upload, X } from "lucide-react";
-import { categories, phoneGroups } from "@/data/site";
+import { phoneGroups } from "@/data/site";
 import { DEFAULT_STOCK_STATUS, stockStatuses, type StockStatus } from "@/lib/catalogue";
 import type { Product } from "@/lib/products";
 
 type Props = {
   product: Product | null;
+  categories: string[];
   onSaved: (product: Product) => void;
   onClose: () => void;
 };
 
-export default function ProductForm({ product, onSaved, onClose }: Props) {
+export default function ProductForm({ product, categories, onSaved, onClose }: Props) {
   const [name, setName] = useState(product?.name ?? "");
-  const [category, setCategory] = useState<string>(product?.category ?? categories[0]);
+  const [category, setCategory] = useState<string>(product?.category ?? categories[0] ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [features, setFeatures] = useState((product?.features ?? []).join("\n"));
   const [fits, setFits] = useState<string[]>(product?.fits ?? []);

@@ -3,7 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import ProductBrowser from "@/components/ProductBrowser";
-import { categories, site } from "@/data/site";
+import { site } from "@/data/site";
+import { listCategories } from "@/lib/categories";
 import { listProducts } from "@/lib/products";
 import { whatsappLink } from "@/lib/contact-links";
 
@@ -21,13 +22,13 @@ export default async function Products({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const products = await listProducts();
+  const [products, categories] = await Promise.all([listProducts(), listCategories()]);
   const feature =
     products.find((p) => p.slug === "over-ear-wireless-headphones") ?? products[0] ?? null;
 
-  const tiles = categories.map((name) => {
-    const inCategory = products.filter((p) => p.category === name);
-    return { name, count: inCategory.length, image: inCategory[0]?.image ?? null };
+  const tiles = categories.map((cat) => {
+    const inCategory = products.filter((p) => p.category === cat.name);
+    return { name: cat.name, parentId: cat.parentId, count: inCategory.length, image: inCategory[0]?.image ?? null };
   });
 
   return (
@@ -170,7 +171,7 @@ export default async function Products({
         </p>
 
         <div className="mt-8">
-          <ProductBrowser products={products} initialCategory={category} />
+          <ProductBrowser products={products} categories={categories} initialCategory={category} />
         </div>
       </section>
     </>
