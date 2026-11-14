@@ -21,7 +21,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
       },
       body: JSON.stringify({ from: env.EMAIL_FROM, to: [to], subject, html }),
     });
-    if (!res.ok) console.error("resend rejected email", res.status);
+    if (!res.ok) console.error("resend rejected email", res.status, await res.text());
     return res.ok;
   } catch (err) {
     console.error("resend request failed", err);
