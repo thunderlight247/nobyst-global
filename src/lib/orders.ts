@@ -1,4 +1,6 @@
+import { formatPrice } from "./catalogue";
 import { getEnv } from "./cloudflare";
+import { escapeHtml, sendEmail } from "./email";
 import { getProductBySlug } from "./products";
 
 const PAYSTACK_API = "https://api.paystack.co";
@@ -242,9 +244,44 @@ export async function verifyCheckout(reference: string): Promise<"paid" | "faile
     body.data.amount === order.total_pesewas &&
     body.data.currency === "GHS";
 
-  await env.DB.prepare("UPDATE orders SET status = ?, paid_at = CASE WHEN ? = 'paid' THEN datetime('now') ELSE paid_at END WHERE id = ?")
+  // Only the request that flips the order to paid sends the confirmation, so a repeat verify does not email twice.
+  const update = await env.DB.prepare("UPDATE orders SET status = ?, paid_at = CASE WHEN ? = 'paid' THEN datetime('now') ELSE paid_at END WHERE id = ? AND status != 'paid'")
     .bind(paid ? "paid" : "failed", paid ? "paid" : "failed", order.id)
     .run();
 
+  if (paid && (update.meta?.changes ?? 0) > 0) await sendOrderConfirmation(order.id);
+
   return paid ? "paid" : "failed";
+}
+
+async function sendOrderConfirmation(orderId: string): Promise<void> {
+  const env = await getEnv();
+  const order = await env.DB.prepare("SELECT reference, name, email, total_pesewas FROM orders WHERE id = ?")
+    .bind(orderId)
+    .first<{ reference: string; name: string; email: string; total_pesewas: number }>();
+  if (!order) return;
+
+  const { results: items } = await env.DB.prepare(
+    "SELECT product_name, color, quantity, unit_pesewas FROM order_items WHERE order_id = ?"
+  )
+    .bind(orderId)
+    .all<{ product_name: string; color: string; quantity: number; unit_pesewas: number }>();
+
+  const rows = items
+    .map(
+      (i) =>
+        `<tr><td style="padding:6px 0">${escapeHtml(i.product_name)}${i.color ? ` (${escapeHtml(i.color)})` : ""} × ${i.quantity}</td><td style="padding:6px 0;text-align:right">${escapeHtml(formatPrice(i.unit_pesewas * i.quantity) ?? "")}</td></tr>`
+    )
+    .join("");
+
+  await sendEmail(
+    order.email,
+    `Order confirmed: ${order.reference}`,
+    `<p>Hello ${escapeHtml(order.name)},</p>
+<p>Thank you for your order. We have received your payment.</p>
+<p><strong>Order reference:</strong> ${escapeHtml(order.reference)}</p>
+<table style="width:100%;border-collapse:collapse">${rows}
+<tr><td style="padding-top:10px;border-top:1px solid #ddd"><strong>Total</strong></td><td style="padding-top:10px;border-top:1px solid #ddd;text-align:right"><strong>${escapeHtml(formatPrice(order.total_pesewas) ?? "")}</strong></td></tr></table>
+<p>Keep this reference for any questions about your order.</p>`
+  );
 }

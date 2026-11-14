@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createEnquiry, type EnquiryType } from "@/lib/enquiries";
+import { escapeHtml, sendEmail } from "@/lib/email";
+import { site } from "@/data/site";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,16 @@ export async function POST(request: Request) {
       productName: body.productName ? String(body.productName).trim() : null,
       quantity: typeof body.quantity === "number" ? body.quantity : null,
     });
+
+    // Acknowledge the customer. A mail failure never fails the saved enquiry.
+    await sendEmail(
+      enquiry.email,
+      "We received your message - NOBYST GLOBAL",
+      `<p>Hello ${escapeHtml(enquiry.name)},</p>
+<p>Thank you for getting in touch. We have received your message and will reply to this email address as soon as we can.</p>
+<p>For anything urgent, email <a href="mailto:${site.email}">${site.email}</a>.</p>
+<blockquote style="margin:12px 0;padding-left:12px;border-left:3px solid #ddd;color:#555">${escapeHtml(enquiry.message)}</blockquote>`
+    );
 
     return NextResponse.json({ ok: true, id: enquiry.id }, { status: 201 });
   } catch (error) {
