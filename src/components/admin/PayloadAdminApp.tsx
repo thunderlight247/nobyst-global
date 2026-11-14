@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Search,
   Shield,
+  ShoppingBag,
   Tag,
   Trash2,
   UserCheck,
@@ -27,6 +28,7 @@ import {
 } from "lucide-react";
 import type { Product } from "@/lib/products";
 import type { Enquiry, EnquiryStatus } from "@/lib/enquiries";
+import type { PaidOrder } from "@/lib/orders";
 import { categories, site } from "@/data/site";
 import { formatPrice } from "@/lib/catalogue";
 import StockBadge from "@/components/StockBadge";
@@ -36,6 +38,7 @@ import { whatsappLink } from "@/lib/contact-links";
 type Props = {
   initialProducts: Product[];
   initialEnquiries: Enquiry[];
+  initialOrders: PaidOrder[];
   initialSegment: string;
 };
 
@@ -44,12 +47,13 @@ type Role = "admin" | "staff";
 export default function PayloadAdminApp({
   initialProducts,
   initialEnquiries,
+  initialOrders,
   initialSegment,
 }: Props) {
   const router = useRouter();
   const [role, setRole] = useState<Role>("admin");
   const [tab, setTab] = useState<string>(
-    ["dashboard", "products", "categories", "enquiries", "media"].includes(initialSegment)
+    ["dashboard", "products", "categories", "enquiries", "orders", "media"].includes(initialSegment)
       ? initialSegment
       : "dashboard"
   );
@@ -174,6 +178,7 @@ export default function PayloadAdminApp({
             { id: "products", label: "Products", icon: Boxes, badge: products.length },
             { id: "categories", label: "Categories", icon: FolderTree, badge: categories.length },
             { id: "enquiries", label: "Enquiries", icon: Inbox, badge: newEnquiriesCount ? `${newEnquiriesCount} new` : null },
+            { id: "orders", label: "Orders", icon: ShoppingBag, badge: initialOrders.length ? `${initialOrders.length} paid` : null },
             { id: "media", label: "Media & 3D Assets", icon: FileBox, badge: models3dCount ? `${models3dCount} 3D` : null },
           ].map((item) => {
             const Icon = item.icon;
@@ -576,6 +581,54 @@ export default function PayloadAdminApp({
         )}
 
         {/* TAB 4: ENQUIRIES COLLECTION */}
+        {tab === "orders" && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-royal">Collection</span>
+            <h1 className="font-display text-2xl font-extrabold text-navy sm:text-3xl">Paid Orders</h1>
+            <p className="mt-1 text-xs text-navy/60">
+              Orders confirmed by Paystack. Pending or failed payments are not listed.
+            </p>
+
+            <div className="mt-6 space-y-4">
+              {initialOrders.length === 0 ? (
+                <div className="rounded-2xl border border-navy/10 bg-white p-12 text-center text-xs text-navy/50">
+                  No paid orders yet.
+                </div>
+              ) : (
+                initialOrders.map((order) => (
+                  <div key={order.id} className="rounded-2xl border border-navy/10 bg-white p-5 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-navy/5 pb-3">
+                      <div>
+                        <p className="text-xs font-bold text-navy">{order.name}</p>
+                        <p className="text-[11px] text-navy/50">
+                          {order.reference} · {order.email} · {order.phone}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-extrabold text-royal">
+                          {formatPrice(order.totalPesewas)}
+                        </p>
+                        {order.paidAt && (
+                          <p className="text-[11px] text-navy/40">
+                            {new Date(order.paidAt.replace(" ", "T") + "Z").toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <ul className="mt-3 space-y-1 text-xs text-navy/70">
+                      {order.items.map((item, i) => (
+                        <li key={i}>
+                          {item.quantity} × {item.productName} ({item.color}) at {formatPrice(item.unitPesewas)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {tab === "enquiries" && (
           <div>
             <div className="flex items-center justify-between">

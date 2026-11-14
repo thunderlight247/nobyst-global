@@ -108,6 +108,67 @@ export async function createCheckout(
   return { authorizationUrl: body.data.authorization_url, reference };
 }
 
+export type PaidOrder = {
+  id: string;
+  reference: string;
+  name: string;
+  email: string;
+  phone: string;
+  totalPesewas: number;
+  paidAt: string | null;
+  items: { productName: string; color: string; quantity: number; unitPesewas: number }[];
+};
+
+/** Paid orders only, newest first, each with its line items. */
+export async function listPaidOrders(): Promise<PaidOrder[]> {
+  const { DB } = await getEnv();
+  const { results: orders } = await DB.prepare(
+    "SELECT id, reference, name, email, phone, total_pesewas, paid_at FROM orders WHERE status = 'paid' ORDER BY paid_at DESC LIMIT 200"
+  ).all<{
+    id: string;
+    reference: string;
+    name: string;
+    email: string;
+    phone: string;
+    total_pesewas: number;
+    paid_at: string | null;
+  }>();
+  if (orders.length === 0) return [];
+
+  const { results: rows } = await DB.prepare(
+    "SELECT order_id, product_name, color, quantity, unit_pesewas FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE status = 'paid' ORDER BY paid_at DESC LIMIT 200)"
+  ).all<{
+    order_id: string;
+    product_name: string;
+    color: string;
+    quantity: number;
+    unit_pesewas: number;
+  }>();
+
+  const byOrder = new Map<string, PaidOrder["items"]>();
+  for (const r of rows) {
+    const list = byOrder.get(r.order_id) ?? [];
+    list.push({
+      productName: r.product_name,
+      color: r.color,
+      quantity: r.quantity,
+      unitPesewas: r.unit_pesewas,
+    });
+    byOrder.set(r.order_id, list);
+  }
+
+  return orders.map((o) => ({
+    id: o.id,
+    reference: o.reference,
+    name: o.name,
+    email: o.email,
+    phone: o.phone,
+    totalPesewas: o.total_pesewas,
+    paidAt: o.paid_at,
+    items: byOrder.get(o.id) ?? [],
+  }));
+}
+
 /**
  * Confirms a transaction with Paystack and marks the matching order as paid.
  * Only Paystack's verify response is trusted; the redirect query string is not.
