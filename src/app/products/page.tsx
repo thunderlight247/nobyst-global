@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, MessageCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import ProductBrowser from "@/components/ProductBrowser";
 import { site } from "@/data/site";
 import { listCategories } from "@/lib/categories";
 import { listProducts } from "@/lib/products";
-import { whatsappLink } from "@/lib/contact-links";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Products",
   description:
-    "Phones, audio, charging, cases and everyday phone accessories supplied by NOBYST GLOBAL LTD in Techiman, Ghana. Confirm availability on WhatsApp.",
+    "Phones, audio, charging, cases and everyday phone accessories supplied by NOBYST GLOBAL LTD in Techiman, Ghana. Prices and stock are shown on each product.",
 };
 
 export default async function Products({
@@ -48,21 +47,16 @@ export default async function Products({
                 Everyday tech,<br className="hidden sm:inline" /> ready to take home.
               </h1>
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-navy/70 text-pretty sm:mt-5 sm:text-lg">
-                Phones, audio, charging, cases and the accessories that go with them. Message us on
-                WhatsApp to confirm stock, colours and model fit before you travel to us.
+                Phones, audio, charging, cases and the accessories that go with them. Shop by category,
+                filter by your phone model and add what you need to your cart.
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row sm:items-center">
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={whatsappLink(
-                    `Hello ${site.short}, I would like to ask about a product in your catalogue.`
-                  )}
+                <Link
+                  href="/support"
                   className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-royal active:scale-[0.98] sm:w-auto sm:text-base"
                 >
-                  <MessageCircle size={17} aria-hidden />
                   Ask about a product
-                </a>
+                </Link>
                 <Link
                   href="#catalogue"
                   className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-navy/20 bg-white px-6 py-3 text-sm font-bold text-navy transition-colors hover:border-navy active:scale-[0.98] sm:w-auto sm:text-base"
@@ -170,7 +164,7 @@ export default async function Products({
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-navy/70 sm:text-base">
           Filter by category, search by name, or narrow the list to what works with your phone. Prices
-          and colours are confirmed on WhatsApp or in store.
+          and stock are shown on each product.
         </p>
 
         <div className="mt-8">

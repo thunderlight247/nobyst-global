@@ -4,9 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Inbox, Menu, MessageCircle, Search, ShoppingBag, UserRound, X } from "lucide-react";
+import { Inbox, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
 import { useNobystStore } from "@/store/useStore";
-import { nav, site } from "@/data/site";
+import { nav } from "@/data/site";
 
 function CartLink() {
   const cart = useNobystStore((s) => s.cart);
@@ -189,19 +189,7 @@ export default function Header() {
             })}
           </div>
 
-          <div className="mt-4 border-t border-navy/10 pt-3">
-            <a
-              href={`https://wa.me/${site.whatsapp}?text=${encodeURIComponent(
-                "Hello NOBYST, I would like to make an enquiry."
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-600 active:scale-[0.98]"
-            >
-              <MessageCircle size={18} aria-hidden />
-              <span>Chat on WhatsApp ({site.phone})</span>
-            </a>
-          </div>
+
         </nav>
       )}
 

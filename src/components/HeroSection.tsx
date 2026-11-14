@@ -8,14 +8,13 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  MessageCircle,
   Pause,
   Play,
+  ShoppingBag,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { site, current } from "@/data/site";
-import { whatsappLink } from "@/lib/contact-links";
 
 export interface HeroSlide {
   id: string;
@@ -239,15 +238,13 @@ export default function HeroSection() {
 
             {/* CTAs (Full-width on mobile with clear touch boundaries) */}
             <div className="mt-6 flex flex-col gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-              <a
-                href={whatsappLink(`Hello ${site.short}, I would like to make an enquiry.`)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all duration-200 hover:bg-emerald-500 hover:shadow-xl active:scale-[0.98] sm:w-auto sm:text-base"
+              <Link
+                href="/products"
+                className="group inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-bold text-navy shadow-lg transition-all duration-200 hover:bg-white hover:shadow-xl active:scale-[0.98] sm:w-auto sm:text-base"
               >
-                <MessageCircle size={18} aria-hidden />
-                <span>Chat with us on WhatsApp</span>
-              </a>
+                <ShoppingBag size={18} aria-hidden />
+                <span>Shop now</span>
+              </Link>
 
               <Link
                 href="/businesses"

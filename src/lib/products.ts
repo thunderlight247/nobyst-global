@@ -19,7 +19,7 @@ export type Product = {
   model3dUrl?: string | null;
   /** Available color variants (names or hex codes e.g. ["Black", "Gold", "Blue"]) */
   colors: string[];
-  /** Price in pesewas; null means the price is confirmed on WhatsApp. */
+  /** Price in pesewas; null means the price has not been set yet. */
   pricePesewas: number | null;
   stockStatus: StockStatus;
   imageAlt: string;

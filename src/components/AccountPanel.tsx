@@ -17,8 +17,10 @@ async function post(url: string, body: unknown) {
   return { ok: res.ok, data };
 }
 
-export default function AccountPanel() {
+export default function AccountPanel({ next = "/account" }: { next?: string }) {
   const router = useRouter();
+  // Only same-site paths are allowed, to prevent open redirects.
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/account";
   const [mode, setMode] = useState<Mode>("signin");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export default function AccountPanel() {
       setError(res.error ?? "Something went wrong. Please try again.");
       return;
     }
+    router.push(safeNext);
     router.refresh();
   }
 

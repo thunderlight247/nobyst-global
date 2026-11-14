@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Hourglass } from "lucide-react";
 import HeroSection from "@/components/HeroSection";
@@ -7,19 +8,63 @@ import Reveal from "@/components/Reveal";
 import { Icon } from "@/lib/icons";
 import { site, current, future, values } from "@/data/site";
 import { listCategories } from "@/lib/categories";
+import { formatPrice, stockLabel } from "@/lib/catalogue";
 import { getContent } from "@/lib/content";
+import { listProducts } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [categories, content] = await Promise.all([
+  const [categories, content, products] = await Promise.all([
     listCategories().then((all) => all.filter((c) => !c.parentId)),
     getContent(),
+    listProducts(),
   ]);
+  const featured = products.filter((p) => p.stockStatus !== "out_of_stock").slice(0, 4);
   return (
     <>
       {/* Hero with auto-changing phone and device showcase */}
       <HeroSection />
+
+      {/* Featured products */}
+      {featured.length > 0 && (
+        <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6 sm:pt-20 lg:px-8">
+          <div className="flex items-end justify-between gap-4">
+            <h2 className="font-display text-3xl font-bold tracking-tight text-navy sm:text-4xl">Featured products</h2>
+            <Link href="/products" className="shrink-0 text-sm font-bold text-royal hover:text-navy">
+              Shop all
+            </Link>
+          </div>
+          <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+            {featured.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/products/${p.slug}`}
+                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200/60 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                >
+                  <div className="relative aspect-square w-full overflow-hidden bg-[#F1EFEA]">
+                    <Image
+                      src={p.image}
+                      alt={p.imageAlt}
+                      fill
+                      sizes="(min-width:1024px) 25vw, 50vw"
+                      className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1 p-3 sm:p-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-navy/50">{p.category}</span>
+                    <span className="text-xs font-bold leading-snug text-navy sm:text-sm">{p.name}</span>
+                    <span className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs sm:text-sm">
+                      <span className="font-bold text-royal">{formatPrice(p.pricePesewas) ?? "Ask for price"}</span>
+                      <span className="text-[10px] text-navy/55">{stockLabel(p.stockStatus)}</span>
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Shop by category */}
       <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6 sm:pt-20 lg:px-8">
@@ -117,6 +162,30 @@ export default async function Home() {
         </Reveal>
       </section>
 
+      {/* Guide links */}
+      <section className="mx-auto max-w-6xl px-5 pb-12 sm:px-6 sm:pb-20 lg:px-8">
+        <ul className="grid gap-3 sm:grid-cols-3 sm:gap-5">
+          {[
+            { href: "/support", title: "Customer support", text: "Questions about a product, order or payment." },
+            { href: "/account", title: "Your account", text: "Sign in to check out and view your orders." },
+            { href: "/about", title: "About NOBYST", text: "Who we are, what we do and how we work." },
+          ].map((g) => (
+            <li key={g.href}>
+              <Link
+                href={g.href}
+                className="group flex h-full items-start justify-between gap-3 rounded-2xl border border-neutral-200/60 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-royal/40 hover:shadow-md"
+              >
+                <span>
+                  <span className="block font-display text-base font-bold text-navy">{g.title}</span>
+                  <span className="mt-1 block text-sm leading-relaxed text-navy/70">{g.text}</span>
+                </span>
+                <ArrowRight size={16} aria-hidden className="mt-1 shrink-0 text-navy/40 transition-transform group-hover:translate-x-1 group-hover:text-royal" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {/* Planned expansion */}
       <section className="mx-auto max-w-6xl px-5 pb-12 sm:px-6 sm:pb-20 lg:px-8">
         <div className="rounded-3xl border border-gold/40 bg-gradient-to-br from-[#FAF8F0] via-white to-[#F2F5FD] p-6 shadow-sm sm:p-10 lg:p-12">
@@ -129,7 +198,7 @@ export default async function Home() {
             Where we are heading
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-navy/75 sm:text-base">
-            {site.vision} {content["home.planned.intro"]} These business areas are{" "}
+            {content["home.planned.intro"]} These business areas are{" "}
             <strong className="font-bold text-navy">not operating today</strong>.
           </p>
 

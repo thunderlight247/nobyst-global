@@ -47,7 +47,7 @@ export default function ProductGallery({ photos, alt }: { photos: GalleryPhoto[]
 
       <p className="mt-2.5 text-[11px] leading-relaxed text-navy/50">
         {photos.length > 1 ? `${photos.length} photos. ` : ""}
-        Colours and packaging vary with each delivery — confirm on WhatsApp.
+        Colours and packaging vary with each delivery — ask our support team to confirm.
       </p>
     </div>
   );

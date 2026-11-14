@@ -1,15 +1,16 @@
 "use client";
 import { useState } from "react";
-import { MessageCircle, Send, AlertCircle } from "lucide-react";
+import { CheckCircle2, Send, AlertCircle } from "lucide-react";
 import { site } from "@/data/site";
-import { mailtoLink, whatsappLink } from "@/lib/contact-links";
 
-/** Static site: composes a bulk enquiry and opens WhatsApp (email fallback shown after sending). */
+/** Composes a bulk enquiry and saves it to D1 for the team to reply to by email. */
 export default function BulkOrderForm({ product }: { product: string }) {
   const [qty, setQty] = useState("10");
   const [buyer, setBuyer] = useState("");
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   const quantity = Number(qty);
   const valid = Number.isInteger(quantity) && quantity >= 5 && quantity <= 10000;
@@ -18,33 +19,58 @@ export default function BulkOrderForm({ product }: { product: string }) {
     buyer.trim() ? `. Business / name: ${buyer.trim()}` : ""
   }`;
 
-  const mailto = mailtoLink(`Bulk quote: ${product}`, message);
-
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!valid) {
       setError("Enter a quantity of 5 or more (whole units).");
       return;
     }
     setError("");
-    setSent(true);
+    setServerError("");
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/enquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "bulk_order",
+          name: buyer.trim() || "Wholesale Buyer",
+          email: site.email,
+          phone: null,
+          topic: "Bulk order inquiry",
+          message: message.trim(),
+          productName: product,
+          quantity: parseInt(qty, 10) || 5,
+        }),
+      });
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      setSent(true);
+    } catch {
+      setServerError(`We could not send your request. Please try again, or email ${site.email}.`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
-    fetch("/api/enquiries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "bulk_order",
-        name: buyer.trim() || "Wholesale Buyer",
-        email: "wholesale@nobyst.com",
-        phone: null,
-        topic: "Bulk order inquiry",
-        message: message.trim(),
-        productName: product,
-        quantity: parseInt(qty, 10) || 5,
-      }),
-    }).catch((err) => console.warn("Failed to persist bulk order:", err));
-
-    window.open(whatsappLink(message), "_blank", "noopener,noreferrer");
+  if (sent) {
+    return (
+      <div className="flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4" role="status">
+        <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-green-600" aria-hidden />
+        <div>
+          <p className="font-display text-sm font-bold text-green-900">Bulk enquiry received</p>
+          <p className="mt-1 text-xs leading-relaxed text-green-900/80">
+            We reply with pricing and availability to the details you gave.
+          </p>
+          <button
+            type="button"
+            onClick={() => setSent(false)}
+            className="mt-2 text-xs font-bold text-royal hover:text-navy"
+          >
+            Send another quantity
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -92,29 +118,24 @@ export default function BulkOrderForm({ product }: { product: string }) {
           {error}
         </p>
       )}
+      {serverError && (
+        <p role="alert" className="text-xs font-medium text-red-600">
+          {serverError}
+        </p>
+      )}
 
       <button
         type="submit"
-        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-royal px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-navy sm:w-auto"
+        disabled={submitting}
+        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-royal px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-navy disabled:opacity-60 sm:w-auto"
       >
         <Send size={16} aria-hidden />
-        Send bulk enquiry on WhatsApp
+        {submitting ? "Sending..." : "Send bulk enquiry"}
       </button>
 
-      {sent ? (
-        <p className="text-xs leading-relaxed text-navy/70" role="status">
-          WhatsApp should have opened with your enquiry. If it did not,{" "}
-          <a href={mailto} className="inline-flex items-center gap-1 font-bold text-royal hover:text-navy">
-            <MessageCircle size={12} aria-hidden />
-            email the same details
-          </a>
-          .
-        </p>
-      ) : (
-        <p className="text-xs leading-relaxed text-navy/55">
-          We reply with pricing and availability. No payment is taken on this website.
-        </p>
-      )}
+      <p className="text-xs leading-relaxed text-navy/55">
+        We reply with pricing and availability. No payment is taken on this website.
+      </p>
     </form>
   );
 }

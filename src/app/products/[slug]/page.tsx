@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Check, MessageCircle, Package, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, Package, ShieldCheck } from "lucide-react";
 import BulkOrderForm from "@/components/BulkOrderForm";
 import ProductGallery from "@/components/ProductGallery";
 import ProductDetailInteractive from "@/components/ProductDetailInteractive";
@@ -10,7 +10,6 @@ import StockBadge from "@/components/StockBadge";
 import { formatPrice } from "@/lib/catalogue";
 import { phoneGroups, site } from "@/data/site";
 import { getProductBySlug, listRelated } from "@/lib/products";
-import { whatsappLink } from "@/lib/contact-links";
 
 export const dynamic = "force-dynamic";
 
@@ -134,33 +133,22 @@ export default async function ProductPage({ params }: { params: { slug: string }
                 ))}
               </ul>
               <p className="mt-3 text-xs leading-relaxed text-navy/60">
-                Cases and screen guards fit specific models. Send your exact phone model on WhatsApp and
-                we will confirm fit and availability.
+                Cases and screen guards fit specific models. Send us your exact phone model through support
+                and we will confirm fit and availability.
               </p>
             </div>
           )}
 
           <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href={whatsappLink(
-                `Hello ${site.short}, I would like to check availability for: ${product.name}. My phone model is: `
-              )}
+            <Link
+              href={`/support?product=${encodeURIComponent(product.name)}`}
               className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-royal active:scale-[0.98] sm:w-auto"
             >
-              <MessageCircle size={17} aria-hidden />
-              Check availability
-            </a>
-            <a
-              href={`mailto:${site.email}?subject=${encodeURIComponent(`Availability: ${product.name}`)}`}
-              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-navy/20 bg-white px-6 py-3 text-sm font-bold text-navy transition-colors hover:border-royal hover:text-royal active:scale-[0.98] sm:w-auto"
-            >
-              Email us
-            </a>
+              Ask about this product
+            </Link>
           </div>
           <p className="mt-3 text-xs text-navy/55">
-            Prices, colours and stock are confirmed on WhatsApp or in store.
+            Stock and colour availability are confirmed by our support team.
           </p>
         </div>
       </div>

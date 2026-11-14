@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
-import { Mail, Phone, MessageCircle, MapPin, ArrowUpRight } from "lucide-react";
+import { Mail, Phone, LifeBuoy, MapPin, ArrowUpRight } from "lucide-react";
 import ContactForm from "@/components/ContactForm";
-import { whatsappLink } from "@/lib/contact-links";
 import { site } from "@/data/site";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Contact NOBYST GLOBAL LTD in Techiman, Ghana by phone, WhatsApp or email.",
+  description: "Contact NOBYST GLOBAL LTD in Techiman, Ghana by phone or email.",
 };
 
 export default function Contact() {
   const items = [
     {
-      Icon: MessageCircle,
-      label: "WhatsApp support",
-      detail: "Fastest route for product checks, agency services and orders",
-      value: site.phone,
-      href: whatsappLink(`Hello ${site.short}, I would like to make an enquiry.`),
-      actionText: "Chat on WhatsApp",
+      Icon: LifeBuoy,
+      label: "Support",
+      detail: "Send questions or concerns by WhatsApp or email",
+      value: "Support centre",
+      href: "/support",
+      actionText: "Open support",
       highlight: true,
     },
     {
@@ -124,7 +123,7 @@ export default function Contact() {
             Send an enquiry
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-navy/70">
-            Share a few details and we will continue the conversation on WhatsApp or email.
+            Share a few details and our team will reply to the email address you give.
           </p>
         </div>
         <div className="mt-6 sm:mt-7">

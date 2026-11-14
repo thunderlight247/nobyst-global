@@ -2,14 +2,13 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, MessageCircle, AlertCircle, Smartphone, ChevronDown, ArrowRight } from "lucide-react";
-import { phoneGroups, site } from "@/data/site";
+import { Search, AlertCircle, Smartphone, ChevronDown, ArrowRight } from "lucide-react";
+import { phoneGroups } from "@/data/site";
 import type { PhoneGroupId } from "@/data/site";
 import type { Product } from "@/lib/products";
 import type { CategoryNode } from "@/lib/categories";
 import StockBadge from "@/components/StockBadge";
 import { formatPrice } from "@/lib/catalogue";
-import { whatsappLink } from "@/lib/contact-links";
 import { motion } from "framer-motion";
 import { useNobystStore } from "@/store/useStore";
 
@@ -195,7 +194,7 @@ export default function ProductBrowser({
       {activePhone && (
         <p className="mt-1 max-w-2xl text-xs leading-relaxed text-navy/55">
           Wired earphones use a 3.5&nbsp;mm jack, and cases and screen guards fit specific models. Tell
-          us your exact model on WhatsApp to confirm fit before ordering.
+          us your exact model through support to confirm fit before ordering.
         </p>
       )}
 
@@ -209,7 +208,7 @@ export default function ProductBrowser({
           </p>
           <p className="mt-2 text-sm text-navy/75">
             {products.length === 0
-              ? "Please check back shortly, or message us on WhatsApp for current stock."
+              ? "Please check back shortly, or contact our support team for current stock."
               : "Try a different search term, category or phone selection."}
           </p>
           {products.length > 0 && (
@@ -272,20 +271,7 @@ export default function ProductBrowser({
                   <StockBadge status={p.stockStatus} />
                 </div>
 
-                <div className="mt-3.5 flex items-center gap-2">
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={whatsappLink(
-                      `Hello ${site.short}, I would like to ask about availability for: ${p.name}${
-                        activePhone ? ` (my phone: ${activePhone.label})` : ""
-                      }`
-                    )}
-                    className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-royal active:scale-95"
-                  >
-                    <MessageCircle size={15} aria-hidden />
-                    <span>Confirm on WhatsApp</span>
-                  </a>
+                <div className="mt-3.5 flex items-center justify-end gap-2">
                   <Link
                     href={`/products/${p.slug}`}
                     aria-label={`Open ${p.name}`}

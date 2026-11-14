@@ -24,10 +24,10 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
 - **Home** — branded hero with a company snapshot, current operations, clearly separated planned expansion, values, partnership call to action.
 - **About** — positioning, company facts, mission, vision, philosophy and values.
 - **Our Businesses** — "Operating today" divisions kept visually and editorially separate from "Planned expansion" areas.
-- **Products** — accessory ranges with search and category filters, plus a WhatsApp availability check per item.
+- **Products** — accessory ranges with search and category filters, prices and stock per item. Shoppers can browse and add to cart without an account; checkout requires sign-in.
 - **Partner with us** — validated partnership enquiry form.
-- **Contact** — phone, WhatsApp, email, location and an enquiry form.
-- Both forms validate on the client and prepare the message in WhatsApp; email is offered as an alternative. No server endpoint or webhook is required.
+- **Contact** and **Support** — phone, email, location and enquiry forms. Support also offers WhatsApp.
+- Enquiry forms validate on the client and save to D1 through `POST /api/enquiries`; email is offered as a fallback.
 - **Product detail pages** carry phone-compatibility chips and a bulk-order enquiry form (5+ units).
 
 ## Assets

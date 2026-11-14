@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS products (
   features TEXT NOT NULL DEFAULT '[]',
   image TEXT NOT NULL,
   gallery TEXT NOT NULL DEFAULT '[]',
-  -- Price in pesewas; NULL means the price is confirmed on WhatsApp.
+  -- Price in pesewas; NULL means the price has not been set yet.
   price_pesewas INTEGER,
   stock_status TEXT NOT NULL DEFAULT 'in_stock',
   image_alt TEXT NOT NULL DEFAULT '',

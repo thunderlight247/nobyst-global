@@ -14,7 +14,6 @@ import {
   FolderTree,
   Inbox,
   Layers,
-  MessageCircle,
   Plus,
   RefreshCw,
   Search,
@@ -37,7 +36,6 @@ import StockBadge from "@/components/StockBadge";
 import ProductForm from "@/components/admin/ProductForm";
 import CategoryEditor from "@/components/admin/CategoryEditor";
 import ContentEditor from "@/components/admin/ContentEditor";
-import { whatsappLink } from "@/lib/contact-links";
 import type { ContentValues } from "@/lib/content-blocks";
 
 type Props = {
@@ -347,17 +345,6 @@ export default function PayloadAdminApp({
                             <p className="text-[11px] text-navy/60">{enq.topic || enq.type} • {enq.email}</p>
                             <p className="mt-1 line-clamp-1 text-xs text-navy/80">{enq.message}</p>
                           </div>
-                          {enq.phone && (
-                            <a
-                              href={whatsappLink(`Hello ${enq.name}, following up on your enquiry with NOBYST.`)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="shrink-0 inline-flex items-center gap-1 rounded-full bg-[#25D366] px-2.5 py-1 text-[11px] font-bold text-white hover:opacity-90"
-                            >
-                              <MessageCircle size={12} />
-                              <span>Reply</span>
-                            </a>
-                          )}
                         </div>
                       </li>
                     ))}
@@ -481,7 +468,7 @@ export default function PayloadAdminApp({
                         </td>
                         <td className="px-4 py-3 text-navy/70">{p.category}</td>
                         <td className="px-4 py-3 font-bold text-navy">
-                          {formatPrice(p.pricePesewas) ?? "Ask on WhatsApp"}
+                          {formatPrice(p.pricePesewas) ?? "Not set"}
                         </td>
                         <td className="px-4 py-3">
                           {role === "staff" ? (
@@ -779,19 +766,6 @@ export default function PayloadAdminApp({
                       >
                         Reply by Email
                       </a>
-                      {enq.phone && (
-                        <a
-                          href={whatsappLink(
-                            `Hello ${enq.name}, this is NOBYST Global following up on your inquiry.`
-                          )}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90"
-                        >
-                          <MessageCircle size={14} />
-                          <span>Direct WhatsApp Follow-up</span>
-                        </a>
-                      )}
                     </div>
                   </div>
                 ))

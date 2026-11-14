@@ -11,7 +11,7 @@ function lineTotal(item: CartItem): number | null {
   return item.pricePesewas === null ? null : item.pricePesewas * item.quantity;
 }
 
-export default function CartView() {
+export default function CartView({ signedIn }: { signedIn: boolean }) {
   const cart = useNobystStore((s) => s.cart);
   const updateCartQuantity = useNobystStore((s) => s.updateCartQuantity);
   const removeFromCart = useNobystStore((s) => s.removeFromCart);
@@ -192,10 +192,10 @@ export default function CartView() {
           )}
           <button
             type="submit"
-            disabled={paying || !payable}
+            disabled={paying || !payable || !signedIn}
             className="inline-flex min-h-[48px] w-full items-center justify-center rounded-full bg-navy px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-royal disabled:opacity-60"
           >
-            {paying ? "Redirecting to Paystack…" : "Pay with Paystack"}
+            {!signedIn ? "Sign in to pay" : paying ? "Redirecting to Paystack…" : "Pay with Paystack"}
           </button>
           <p className="text-center text-[11px] text-navy/55">
             Card and mobile money, processed securely by Paystack.

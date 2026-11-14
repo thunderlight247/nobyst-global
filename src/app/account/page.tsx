@@ -14,7 +14,12 @@ function formatPrice(pesewas: number): string {
   return `GH₵ ${(pesewas / 100).toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
   const user = await getCurrentUser();
 
   if (!user) {
@@ -25,7 +30,7 @@ export default async function AccountPage() {
           Sign in to see your paid orders and reorder quickly.
         </p>
         <div className="mt-8">
-          <AccountPanel />
+          <AccountPanel next={next} />
         </div>
       </section>
     );

@@ -27,6 +27,7 @@ export const nav = [
   { href: "/businesses", label: "Our Businesses" },
   { href: "/products", label: "Products" },
   { href: "/partnerships", label: "Partner with us" },
+  { href: "/support", label: "Support" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -56,7 +57,7 @@ export const current = [
     points: [
       "Chargers, cables, audio, cases, screen protection and phones",
       "Product guidance on fit and compatibility before you buy",
-      "Availability checks and follow-up through WhatsApp",
+      "Availability checks and follow-up through our support page",
     ],
     href: "/products",
     cta: "Browse the accessories catalogue",
@@ -70,7 +71,7 @@ export const current = [
     points: [
       "Agency services for everyday cash and digital transactions",
       "Served from our commercial location in Techiman",
-      "Ask in store or on WhatsApp about the services available",
+      "Ask in store or through our support page about the services available",
     ],
     href: "/businesses#agency",
     cta: "View agency service details",

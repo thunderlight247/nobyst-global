@@ -57,14 +57,12 @@ export default function Footer() {
             >
               {site.phone}
             </a>
-            <a
+            <Link
               className="inline-flex items-center gap-1.5 font-bold text-gold transition-colors hover:text-white"
-              href={`https://wa.me/${site.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/support"
             >
-              Direct WhatsApp support →
-            </a>
+              Get support →
+            </Link>
           </address>
         </div>
       </div>

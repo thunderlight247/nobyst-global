@@ -31,6 +31,15 @@ function parseInput(raw: unknown): CheckoutInput | string {
 }
 
 export async function POST(request: Request) {
+  // Purchases need an account. Browsing and the cart stay open to everyone.
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "Please sign in or create an account to complete your purchase." },
+      { status: 401 }
+    );
+  }
+
   let raw: unknown;
   try {
     raw = await request.json();
@@ -44,11 +53,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await getCurrentUser();
     const { authorizationUrl, reference } = await createCheckout(
       input,
       new URL(request.url).origin,
-      user?.id ?? null
+      user.id
     );
     return NextResponse.json({ authorizationUrl, reference });
   } catch (err) {

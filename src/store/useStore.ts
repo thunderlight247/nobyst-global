@@ -30,17 +30,11 @@ export interface NobystStore {
   is3DMode: boolean;
   setIs3DMode: (active: boolean) => void;
 
-  // WhatsApp inquiry generator
-  getWhatsAppUrl: (options: {
-    productName: string;
-    priceFormatted?: string | null;
-    customNote?: string;
-  }) => string;
 }
 
 export const useNobystStore = create<NobystStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
   cart: [],
   addToCart: (item, quantity = 1) =>
     set((state) => {
@@ -77,30 +71,6 @@ export const useNobystStore = create<NobystStore>()(
   is3DMode: false,
   setIs3DMode: (is3DMode: boolean) => set({ is3DMode }),
 
-  getWhatsAppUrl: ({ productName, priceFormatted, customNote }) => {
-    const { selectedColor } = get();
-    const parts = [
-      `Hello NOBYST, I would like to check availability for: ${productName}.`,
-    ];
-
-    if (selectedColor && selectedColor !== "Default") {
-      parts.push(`Preferred colour / finish: ${selectedColor}.`);
-    }
-
-    if (priceFormatted) {
-      parts.push(`Listed price: ${priceFormatted}.`);
-    }
-
-    if (customNote) {
-      parts.push(customNote);
-    } else {
-      parts.push("My phone model / requirement is: ");
-    }
-
-    // Number: 233203245658
-    const message = parts.join(" ");
-    return `https://wa.me/233203245658?text=${encodeURIComponent(message)}`;
-  },
     }),
     {
       name: "nobyst-cart",
