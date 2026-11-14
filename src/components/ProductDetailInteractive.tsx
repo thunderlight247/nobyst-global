@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { Box, Image as ImageIcon, MessageCircle, Sparkles } from "lucide-react";
+import { Box, Image as ImageIcon, ShoppingBag, Sparkles } from "lucide-react";
 import ProductGallery, { type GalleryPhoto } from "@/components/ProductGallery";
 import { useNobystStore } from "@/store/useStore";
-import { site } from "@/data/site";
 
 // Lazy-load the 3D viewer only when clicked to keep initial page load ultra lightweight on mobile
 const ProductViewer3D = dynamic(() => import("@/components/ProductViewer3D"), {
@@ -24,8 +23,10 @@ type Props = {
   photos: GalleryPhoto[];
   alt: string;
   productName: string;
+  productSlug: string;
   category: string;
   priceFormatted: string | null;
+  pricePesewas: number | null;
   model3dUrl?: string | null;
   colors?: string[];
 };
@@ -34,22 +35,19 @@ export default function ProductDetailInteractive({
   photos,
   alt,
   productName,
+  productSlug,
   category,
   priceFormatted,
+  pricePesewas,
   model3dUrl,
   colors = [],
 }: Props) {
   const [view3D, setView3D] = useState(false);
-  const { selectedColor, setSelectedColor, getWhatsAppUrl } = useNobystStore();
+  const [added, setAdded] = useState(false);
+  const { selectedColor, setSelectedColor, addToCart } = useNobystStore();
 
   const availableColors =
     colors.length > 0 ? colors : ["Black", "Gold", "Navy", "Silver"];
-
-  // Generate dynamic WhatsApp inquiry with product, color, and price
-  const whatsappUrl = getWhatsAppUrl({
-    productName,
-    priceFormatted,
-  });
 
   return (
     <div className="space-y-4">
@@ -132,20 +130,28 @@ export default function ProductDetailInteractive({
         </div>
       </div>
 
-      {/* Dynamic WhatsApp-First Conversion Action Button */}
+      {/* Add to cart; checkout happens in the cart */}
       <div className="pt-2">
-        <a
-          target="_blank"
-          rel="noopener noreferrer"
-          href={whatsappUrl}
-          className="group inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-emerald-600 hover:shadow-lg active:scale-[0.98] sm:text-base"
+        <button
+          type="button"
+          onClick={() => {
+            addToCart({
+              slug: productSlug,
+              name: productName,
+              image: photos[0]?.src ?? "",
+              pricePesewas,
+              color: selectedColor || availableColors[0],
+            });
+            setAdded(true);
+            setTimeout(() => setAdded(false), 2000);
+          }}
+          className="inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-full bg-navy px-6 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-royal active:scale-[0.98] sm:text-base"
         >
-          <MessageCircle size={19} aria-hidden />
-          <span>Check Availability / Order via WhatsApp</span>
-        </a>
-        <p className="mt-2 text-center text-xs text-navy/55">
-          Pre-fills &ldquo;{productName}&rdquo; ({selectedColor || availableColors[0]})
-          {priceFormatted ? ` at ${priceFormatted}` : ""} directly on WhatsApp
+          <ShoppingBag size={18} aria-hidden />
+          <span>{added ? "Added to cart" : "Add to cart"}</span>
+        </button>
+        <p className="mb-4 mt-2 text-center text-xs text-navy/55" role="status" aria-live="polite">
+          {added ? "Open the cart to check out." : "Pay securely with Paystack in your cart."}
         </p>
       </div>
     </div>

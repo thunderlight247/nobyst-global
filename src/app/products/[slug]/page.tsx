@@ -56,8 +56,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
           photos={photos}
           alt={product.imageAlt}
           productName={product.name}
+          productSlug={product.slug}
           category={product.category}
           priceFormatted={price}
+          pricePesewas={product.pricePesewas}
           model3dUrl={product.model3dUrl}
           colors={product.colors}
         />

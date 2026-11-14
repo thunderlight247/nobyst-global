@@ -34,6 +34,8 @@ export interface R2Bucket {
 export type CloudflareEnv = {
   DB: D1Database;
   MEDIA: R2Bucket;
+  /** Paystack secret key, set with `wrangler secret put PAYSTACK_SECRET_KEY`. Server-only. */
+  PAYSTACK_SECRET_KEY?: string;
 };
 
 /** Bindings from wrangler.jsonc (local miniflare in dev, Workers in production). */

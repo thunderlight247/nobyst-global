@@ -4,7 +4,6 @@ import { site } from "@/data/site";
 import SmoothScroll from "@/components/SmoothScroll";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { GlobalWebGLProvider } from "@/components/GlobalCanvas";
 
 export const viewport: Viewport = {
@@ -52,7 +51,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Header />
             <main id="main">{children}</main>
             <Footer />
-            <WhatsAppFloat />
           </GlobalWebGLProvider>
         </SmoothScroll>
       </body>

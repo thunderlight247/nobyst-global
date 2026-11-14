@@ -4,8 +4,33 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Inbox, Menu, MessageCircle, Search, X } from "lucide-react";
+import { Inbox, Menu, MessageCircle, Search, ShoppingBag, X } from "lucide-react";
+import { useNobystStore } from "@/store/useStore";
 import { nav, site } from "@/data/site";
+
+function CartLink() {
+  const cart = useNobystStore((s) => s.cart);
+  // Read the persisted cart only after mount, so server and client markup match.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const count = mounted ? cart.reduce((sum, c) => sum + c.quantity, 0) : 0;
+
+  return (
+    <Link
+      href="/cart"
+      aria-label={`Cart, ${count} item${count === 1 ? "" : "s"}`}
+      className="relative inline-flex h-10 items-center gap-1.5 rounded-full border border-navy/15 bg-white px-3 text-xs font-bold text-navy shadow-sm transition-colors hover:border-royal hover:text-royal"
+    >
+      <ShoppingBag size={15} aria-hidden />
+      <span>Cart</span>
+      {count > 0 && (
+        <span className="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-royal px-1.5 text-[10px] font-extrabold text-white">
+          {count}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 export default function Header() {
   const path = usePathname();
@@ -92,6 +117,9 @@ export default function Header() {
             <Search size={15} aria-hidden className="text-navy/50" />
             <span className="truncate">Search accessories…</span>
           </Link>
+
+          {/* Cart link with live item count */}
+          <CartLink />
 
           {/* Quick inquiries / admin link */}
           <Link
