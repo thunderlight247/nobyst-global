@@ -28,7 +28,6 @@ export const nav = [
   { href: "/products", label: "Products" },
   { href: "/partnerships", label: "Partner with us" },
   { href: "/support", label: "Support" },
-  { href: "/contact", label: "Contact" },
 ];
 
 export const values = [

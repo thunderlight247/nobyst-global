@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Compass, Sparkles, Target } from "lucide-react";
+import { ArrowRight, CheckCircle2, Compass, Hourglass, Sparkles, Target } from "lucide-react";
 import SmartImage from "@/components/SmartImage";
-import { companyFacts, site, values } from "@/data/site";
+import { Icon } from "@/lib/icons";
+import { companyFacts, current, future, site, values } from "@/data/site";
+import { getContent } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "About",
@@ -10,7 +12,10 @@ export const metadata: Metadata = {
     "The story, mission, vision and values of NOBYST GLOBAL LTD, a Ghanaian enterprise based in Techiman.",
 };
 
-export default function About() {
+export const dynamic = "force-dynamic";
+
+export default async function About() {
+  const content = await getContent();
   return (
     <>
       {/* Hero */}
@@ -100,6 +105,60 @@ export default function About() {
               {site.philosophy}
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Current operations */}
+      <section className="mx-auto max-w-6xl px-5 pb-10 sm:px-6 sm:pb-16 lg:px-8">
+        <div className="flex items-center gap-2.5">
+          <CheckCircle2 size={16} className="text-royal" aria-hidden />
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-royal sm:text-xs">Operating today</p>
+        </div>
+        <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-navy sm:text-4xl">Our current operations</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-navy/75 sm:text-base">{content["home.operating.intro"]}</p>
+        <ul className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {current.map((c) => (
+            <li key={c.title} className="flex flex-col rounded-2xl border border-navy/10 bg-white p-6 shadow-sm">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-royal text-white">
+                <Icon name={c.icon} size={20} />
+              </span>
+              <h3 className="mt-4 font-display text-lg font-bold text-navy">{c.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-navy/75">{c.text}</p>
+              <ul className="mt-4 space-y-2 border-t border-navy/5 pt-4">
+                {c.points.map((p) => (
+                  <li key={p} className="flex items-start gap-2 text-sm text-navy/70">
+                    <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Planned, not yet operating */}
+      <section className="mx-auto max-w-6xl px-5 pb-10 sm:px-6 sm:pb-16 lg:px-8">
+        <div className="rounded-3xl border border-gold/40 bg-gradient-to-br from-[#FAF8F0] via-white to-[#F2F5FD] p-6 shadow-sm sm:p-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-gold-600/30 bg-gold/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600 sm:text-xs">
+            <Hourglass size={13} aria-hidden />
+            <span>Planned, not yet operating</span>
+          </div>
+          <h2 className="mt-4 font-display text-2xl font-bold tracking-tight text-navy sm:text-4xl">Where we are heading</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-navy/75 sm:text-base">
+            {content["home.planned.intro"]} These business areas are <strong className="font-bold text-navy">not operating today</strong>.
+          </p>
+          <ul className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {future.map((f) => (
+              <li key={f.title} className="rounded-xl border border-neutral-200/60 bg-white/85 p-5 shadow-sm">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold-100 text-gold-600">
+                  <Icon name={f.icon} size={18} />
+                </span>
+                <h3 className="mt-3 font-display text-base font-bold text-navy">{f.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-navy/70">{f.text}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
