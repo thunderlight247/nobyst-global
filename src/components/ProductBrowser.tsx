@@ -36,6 +36,7 @@ export default function ProductBrowser({
     return "All";
   });
   const [phone, setPhone] = useState<PhoneGroupId | "all">("all");
+  const [sort, setSort] = useState<"featured" | "price-asc" | "price-desc" | "name">("featured");
 
   const handleCategoryChange = (newCat: string) => {
     setCat(newCat);
@@ -44,19 +45,29 @@ export default function ProductBrowser({
 
   const activePhone = phoneGroups.find((g) => g.id === phone);
 
-  const list = useMemo(
-    () =>
-      products.filter((p) => {
-        const matchesCategory = cat === "All" || p.category === cat;
-        const matchesPhone =
-          phone === "all" || (p.category !== DEVICE_CATEGORY && p.fits.includes(phone));
-        const matchesQuery = `${p.name} ${p.description} ${p.category}`
-          .toLowerCase()
-          .includes(q.toLowerCase());
-        return matchesCategory && matchesPhone && matchesQuery;
-      }),
-    [q, cat, phone, products]
-  );
+  const list = useMemo(() => {
+    const filtered = products.filter((p) => {
+      const matchesCategory = cat === "All" || p.category === cat;
+      const matchesPhone =
+        phone === "all" || (p.category !== DEVICE_CATEGORY && p.fits.includes(phone));
+      const matchesQuery = `${p.name} ${p.description} ${p.category}`
+        .toLowerCase()
+        .includes(q.toLowerCase());
+      return matchesCategory && matchesPhone && matchesQuery;
+    });
+    // Products without a price sort last for price sorts.
+    const priceOf = (p: Product) => p.pricePesewas ?? Number.POSITIVE_INFINITY;
+    if (sort === "price-asc") return [...filtered].sort((a, b) => priceOf(a) - priceOf(b));
+    if (sort === "price-desc") {
+      return [...filtered].sort((a, b) => {
+        const pa = a.pricePesewas ?? Number.NEGATIVE_INFINITY;
+        const pb = b.pricePesewas ?? Number.NEGATIVE_INFINITY;
+        return pb - pa;
+      });
+    }
+    if (sort === "name") return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    return filtered;
+  }, [q, cat, phone, sort, products]);
 
   const reset = () => {
     setQ("");
@@ -106,6 +117,25 @@ export default function ProductBrowser({
             />
           </label>
         </div>
+
+        <label className="relative block w-full sm:w-52">
+          <span className="sr-only">Sort products</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as typeof sort)}
+            className="min-h-[44px] w-full cursor-pointer appearance-none rounded-full border border-navy/15 bg-white py-2.5 pl-4 pr-9 text-sm text-navy shadow-sm transition-all focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+          >
+            <option value="featured">Sort: Default</option>
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+            <option value="name">Name: A to Z</option>
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute right-3.5 top-3.5 text-navy/50"
+            size={16}
+            aria-hidden
+          />
+        </label>
 
         <div
           role="group"
