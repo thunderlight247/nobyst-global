@@ -50,7 +50,7 @@ export default function EnquiryForm() {
           type: "partnership",
           name: data.name.trim(),
           email: data.email.trim(),
-          phone: data.organisation?.trim() ? `Org: ${data.organisation.trim()}` : null,
+          company: data.organisation?.trim() || null,
           topic: data.type,
           message: data.message.trim(),
         }),
@@ -74,7 +74,8 @@ export default function EnquiryForm() {
           <div>
             <p className="font-display text-lg font-bold text-green-900">Thank you, your enquiry is in</p>
             <p className="mt-1 text-sm leading-relaxed text-green-900/80">
-              Our team will reply to the email address you gave. You can also email us directly.
+              Our team will review your application and reply to the email address you gave. If approved,
+              you will receive an invitation link to your own partner portal.
             </p>
             <div className="mt-4 flex flex-wrap gap-2.5">
               <a

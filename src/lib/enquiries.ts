@@ -15,6 +15,8 @@ export type Enquiry = {
   quantity?: number | null;
   status: EnquiryStatus;
   createdAt: string;
+  /** Organisation from the partnership form. */
+  company?: string | null;
   /** Set when a signed-in partner sent it from the partner portal. */
   userId?: string | null;
 };
@@ -28,6 +30,7 @@ export type EnquiryInput = {
   message: string;
   productName?: string | null;
   quantity?: number | null;
+  company?: string | null;
 };
 
 type EnquiryRow = {
@@ -43,6 +46,7 @@ type EnquiryRow = {
   status: string;
   created_at: string;
   user_id?: string | null;
+  company?: string | null;
 };
 
 function mapRow(row: EnquiryRow): Enquiry {
@@ -59,6 +63,8 @@ function mapRow(row: EnquiryRow): Enquiry {
     status: (row.status as EnquiryStatus) || "new",
     createdAt: row.created_at,
     userId: row.user_id ?? null,
+    // Older partnership enquiries folded the organisation into phone as "Org: …".
+    company: row.company ?? (row.phone?.startsWith("Org: ") ? row.phone.slice(5) : null),
   };
 }
 
@@ -66,26 +72,37 @@ export async function createEnquiry(input: EnquiryInput): Promise<Enquiry> {
   const { DB } = await getEnv();
   const id = crypto.randomUUID();
 
-  // Try saving to D1 (if table exists)
+  const values = [
+    id,
+    input.type,
+    input.name.trim(),
+    input.email.trim(),
+    input.phone?.trim() || null,
+    input.topic?.trim() || null,
+    input.message.trim(),
+    input.productName?.trim() || null,
+    input.quantity || null,
+  ];
   try {
     await DB.prepare(
-      `INSERT INTO enquiries (id, type, name, email, phone, topic, message, product_name, quantity, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')`
+      `INSERT INTO enquiries (id, type, name, email, phone, topic, message, product_name, quantity, status, company)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?)`
     )
-      .bind(
-        id,
-        input.type,
-        input.name.trim(),
-        input.email.trim(),
-        input.phone?.trim() || null,
-        input.topic?.trim() || null,
-        input.message.trim(),
-        input.productName?.trim() || null,
-        input.quantity || null
-      )
+      .bind(...values, input.company?.trim() || null)
       .run();
-  } catch (err) {
-    console.warn("Could not insert enquiry into D1 (table might need migration):", err);
+  } catch {
+    // Database without migration 0010 (no company column): keep the organisation in phone.
+    try {
+      if (input.company && !values[4]) values[4] = `Org: ${input.company.trim()}`;
+      await DB.prepare(
+        `INSERT INTO enquiries (id, type, name, email, phone, topic, message, product_name, quantity, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')`
+      )
+        .bind(...values)
+        .run();
+    } catch (err) {
+      console.warn("Could not insert enquiry into D1 (table might need migration):", err);
+    }
   }
 
   return {
@@ -98,6 +115,7 @@ export async function createEnquiry(input: EnquiryInput): Promise<Enquiry> {
     message: input.message,
     productName: input.productName || null,
     quantity: input.quantity || null,
+    company: input.company || null,
     status: "new",
     createdAt: new Date().toISOString(),
   };

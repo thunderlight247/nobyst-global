@@ -39,6 +39,8 @@ import type { ContentValues } from "@/lib/content-blocks";
 import UserManager from "@/components/admin/UserManager";
 import type { UserSummary } from "@/lib/auth";
 import type { WholesalePrice } from "@/lib/wholesale";
+import type { Invitation } from "@/lib/invitations";
+import PartnerInvitations, { InviteDialog, type InviteDraft } from "@/components/admin/PartnerInvitations";
 
 type Props = {
   initialProducts: Product[];
@@ -49,6 +51,7 @@ type Props = {
   initialSegment: string;
   initialUsers: UserSummary[];
   initialWholesale: Record<string, WholesalePrice>;
+  initialInvitations: Invitation[];
   currentUser: { id: string; email: string };
 };
 
@@ -61,11 +64,15 @@ export default function PayloadAdminApp({
   initialSegment,
   initialUsers,
   initialWholesale,
+  initialInvitations,
   currentUser,
 }: Props) {
   const router = useRouter();
   const [categories, setCategories] = useState<CategoryNode[]>(initialCategories);
   const categoryNames = categories.map((c) => c.name);
+  const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
+  const [inviteDraft, setInviteDraft] = useState<InviteDraft | null>(null);
+  const [devInviteLink, setDevInviteLink] = useState<string | null>(null);
   const [wholesale, setWholesale] = useState<Record<string, WholesalePrice>>(initialWholesale);
   const [tab, setTab] = useState<string>(
     ["dashboard", "products", "categories", "content", "enquiries", "orders", "users", "media"].includes(initialSegment)
@@ -643,7 +650,26 @@ export default function PayloadAdminApp({
         )}
 
         {tab === "users" && (
-          <UserManager initialUsers={initialUsers} currentUserId={currentUser.id} onNotify={notify} />
+          <div>
+            {devInviteLink && (
+              <div className="mb-6 break-all rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
+                <strong>Development only:</strong> no email provider is configured, so the invitation was not
+                emailed. Open this link to test it:{" "}
+                <a href={devInviteLink} className="font-bold underline">
+                  {devInviteLink}
+                </a>
+              </div>
+            )}
+            <PartnerInvitations
+              invitations={invitations}
+              onInvite={setInviteDraft}
+              onRevoked={(id) =>
+                setInvitations((prev) => prev.map((i) => (i.id === id ? { ...i, status: "revoked" } : i)))
+              }
+              onNotify={notify}
+            />
+            <UserManager initialUsers={initialUsers} currentUserId={currentUser.id} onNotify={notify} />
+          </div>
         )}
 
         {tab === "enquiries" && (
@@ -696,6 +722,22 @@ export default function PayloadAdminApp({
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {enq.type === "partnership" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setInviteDraft({
+                                email: enq.email,
+                                name: enq.name,
+                                company: enq.company ?? "",
+                                enquiryId: enq.id,
+                              })
+                            }
+                            className="rounded-lg bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-amber-600"
+                          >
+                            Invite as partner
+                          </button>
+                        )}
                         <select
                           value={enq.status}
                           onChange={(e) => setEnquiryStatus(enq.id, e.target.value as EnquiryStatus)}
@@ -727,6 +769,11 @@ export default function PayloadAdminApp({
                         {enq.phone && (
                           <p className="text-navy/60 mt-1">
                             <strong>Phone:</strong> {enq.phone}
+                          </p>
+                        )}
+                        {enq.company && (
+                          <p className="text-navy/60 mt-1">
+                            <strong>Organisation:</strong> {enq.company}
                           </p>
                         )}
                         {enq.topic && (
@@ -796,6 +843,30 @@ export default function PayloadAdminApp({
           </div>
         )}
       </section>
+
+      {inviteDraft && (
+        <InviteDialog
+          draft={inviteDraft}
+          onClose={() => setInviteDraft(null)}
+          onSent={(invitation, devLink) => {
+            setInvitations((prev) => [
+              invitation,
+              ...prev.map((i) =>
+                i.email === invitation.email && i.status === "pending" ? { ...i, status: "revoked" as const } : i
+              ),
+            ]);
+            if (invitation.enquiryId) {
+              setEnquiries((prev) =>
+                prev.map((e) => (e.id === invitation.enquiryId && e.status === "new" ? { ...e, status: "contacted" } : e))
+              );
+            }
+            setInviteDraft(null);
+            setDevInviteLink(devLink ?? null);
+            if (devLink) setTab("users");
+            notify(devLink ? `Invitation created for ${invitation.email} (not emailed in development).` : `Invitation emailed to ${invitation.email}.`);
+          }}
+        />
+      )}
 
       {/* Product Form Modal (for create / edit) */}
       {editingProduct && (

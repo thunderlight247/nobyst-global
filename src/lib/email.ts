@@ -1,4 +1,5 @@
 import { getEnv } from "./cloudflare";
+import { site } from "@/data/site";
 
 const RESEND_API = "https://api.resend.com/emails";
 
@@ -35,4 +36,16 @@ export function escapeHtml(value: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Where admin notifications go: ADMIN_EMAIL if set, otherwise the public company inbox. */
+export async function adminInbox(): Promise<string> {
+  const env = await getEnv();
+  return env.ADMIN_EMAIL || site.email;
+}
+
+/** The public origin for links in emails. The configured SITE_URL wins over the request host. */
+export async function publicOrigin(request: Request): Promise<string> {
+  const env = await getEnv();
+  return env.SITE_URL || new URL(request.url).origin;
 }

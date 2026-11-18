@@ -42,6 +42,8 @@ export type CloudflareEnv = {
   EMAIL_FROM?: string;
   /** Public site origin used in email links, e.g. https://nobyst-global.example.workers.dev */
   SITE_URL?: string;
+  /** Inbox for admin notifications (new partner applications, partner requests). Defaults to site.email. */
+  ADMIN_EMAIL?: string;
 };
 
 /** Bindings from wrangler.jsonc (local miniflare in dev, Workers in production). */

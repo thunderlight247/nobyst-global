@@ -69,4 +69,6 @@ export const LIMITS = {
   checkoutUser: { limit: 20, windowSeconds: 60 * 60 },
   uploadUser: { limit: 60, windowSeconds: 60 * 60 },
   partnerRequestUser: { limit: 20, windowSeconds: 60 * 60 },
+  inviteAdmin: { limit: 30, windowSeconds: 60 * 60 },
+  inviteAcceptIp: { limit: 10, windowSeconds: 15 * 60 },
 } satisfies Record<string, Limit>;

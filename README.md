@@ -64,7 +64,17 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
 - **Partner portal** — `/partner`, linked from "Partner with us" and from a partner's account page.
   Wholesale prices are set per product in the admin product form and stored in their own
   `wholesale_prices` table, which public pages never read. Partners only see requests they sent while
-  signed in (matched by account id, never by email). New partner requests email `site.email`.
+  signed in (matched by account id, never by email). New partner requests email the admin inbox.
+- **Inviting partners** —
+  1. A business fills in **Partner with us**. The enquiry is saved and the admin inbox gets an email
+     with a link to it (`ADMIN_EMAIL` in `wrangler.jsonc` vars, defaulting to `site.email`).
+  2. In **/admin → Enquiries**, *Invite as partner* (or *Invite a partner* in **Users & Partners**) emails a
+     single-use link valid for 7 days. Sending again replaces the earlier link; pending links can be cancelled.
+  3. The link opens `/partner/invite`. A new invitee sets a name and password and lands in `/partner`;
+     someone who already has an account with that email signs in and accepts. The account email must
+     match the invited email. Only token hashes are stored.
+  Invitation emails need `RESEND_API_KEY` and a verified `EMAIL_FROM`. In `next dev` without a key the
+  admin is shown the link instead of it being emailed; production builds never expose it.
 - Admin features: add, edit and delete products; upload per-product photos (JPG/PNG/WebP, max 6 MB);
   per-product image descriptions; delete cleans up the uploaded photo.
 
@@ -107,7 +117,7 @@ unchanged).
         npx wrangler d1 execute nobyst-catalog --remote --file=./db/seed.sql
 
    Then apply every file in `db/migrations/` in order (each with `--remote --file=...`). Migration
-   `0008_security.sql` adds admin roles and rate limits, and `0009_partners.sql` adds the partner portal;
+   `0008_security.sql` adds admin roles and rate limits, and `0009_partners.sql` adds the partner portal, `0010_partner_invitations.sql` adds email invitations;
    until they run, nobody can open the admin or the partner portal.
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is

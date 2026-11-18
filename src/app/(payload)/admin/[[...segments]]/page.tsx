@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/AccountPanel";
 import { getCurrentUser, listUsers } from "@/lib/auth";
 import { listWholesalePrices } from "@/lib/wholesale";
+import { listInvitations } from "@/lib/invitations";
 import { listProducts } from "@/lib/products";
 import { listEnquiries } from "@/lib/enquiries";
 import { listPaidOrders } from "@/lib/orders";
@@ -48,7 +49,7 @@ export default async function PayloadAdminPage({
     );
   }
 
-  const [products, enquiries, orders, categories, content, users, wholesale] = await Promise.all([
+  const [products, enquiries, orders, categories, content, users, wholesale, invitations] = await Promise.all([
     listProducts().catch(() => []),
     listEnquiries().catch(() => []),
     listPaidOrders().catch(() => []),
@@ -56,6 +57,7 @@ export default async function PayloadAdminPage({
     getContent(),
     listUsers().catch(() => []),
     listWholesalePrices(),
+    listInvitations(),
   ]);
 
   const activeCollection = params.segments?.[0] || "dashboard";
@@ -71,6 +73,7 @@ export default async function PayloadAdminPage({
         initialSegment={activeCollection}
         initialUsers={users}
         initialWholesale={wholesale}
+        initialInvitations={invitations}
         currentUser={{ id: user.id, email: user.email }}
       />
     </main>

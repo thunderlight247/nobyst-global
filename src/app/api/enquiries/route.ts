@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createEnquiry, type EnquiryType } from "@/lib/enquiries";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { adminInbox, escapeHtml, publicOrigin, sendEmail } from "@/lib/email";
 import { site } from "@/data/site";
 import { clientIp, hit, LIMITS, rateLimit } from "@/lib/rate-limit";
 
@@ -58,7 +58,23 @@ export async function POST(request: Request) {
       message: rawMessage,
       productName: text(body.productName, 160),
       quantity,
+      company: text(body.company, 120),
     });
+
+    // Tell the team about partnership applications, with a link straight to the enquiry where
+    // they can send a partner invitation. Visitor text is escaped; this goes only to our inbox.
+    if (type === "partnership") {
+      const origin = await publicOrigin(request);
+      await sendEmail(
+        await adminInbox(),
+        `New partner application: ${enquiry.company ?? enquiry.name}`,
+        `<p><strong>${escapeHtml(enquiry.name)}</strong> (${escapeHtml(enquiry.email)}) applied to partner with NOBYST GLOBAL.</p>
+<p><strong>Organisation:</strong> ${escapeHtml(enquiry.company ?? "Not given")}<br>
+<strong>Category:</strong> ${escapeHtml(enquiry.topic ?? "Not given")}</p>
+<blockquote style="margin:12px 0;padding-left:12px;border-left:3px solid #ddd;color:#555">${escapeHtml(enquiry.message).replace(/\n/g, "<br>")}</blockquote>
+<p><a href="${origin}/admin/enquiries">Review it in the admin</a> and choose <em>Invite as partner</em> to send them a portal invitation.</p>`
+      );
+    }
 
     // Acknowledge the customer, at most a few times per address per hour, so the form cannot be
     // used to flood someone else's inbox. The email deliberately does not quote the submitted

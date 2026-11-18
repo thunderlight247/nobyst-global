@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { createPartnerRequest, listEnquiriesForUser } from "@/lib/enquiries";
 import { listPartnerCatalogue } from "@/lib/wholesale";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { adminInbox, escapeHtml, sendEmail } from "@/lib/email";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
-import { site } from "@/data/site";
 
 // Partner accounts only. Every query is scoped to the signed-in partner's own user id.
 export const dynamic = "force-dynamic";
@@ -55,7 +54,7 @@ export async function POST(request: Request) {
 
     // Let the team know. A mail failure never fails the saved request.
     await sendEmail(
-      site.email,
+      await adminInbox(),
       `Partner request: ${quantity} × ${item.name}`,
       `<p><strong>${escapeHtml(user.company ?? user.name)}</strong> (${escapeHtml(user.email)}) sent a bulk order request from the partner portal.</p>
 <p><strong>Product:</strong> ${escapeHtml(item.name)}<br><strong>Quantity:</strong> ${quantity}</p>
