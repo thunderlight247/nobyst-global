@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { CheckoutError, createCheckout, type CheckoutInput } from "@/lib/orders";
 import { getCurrentUser } from "@/lib/auth";
+import { getEnv } from "@/lib/cloudflare";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,9 @@ export async function POST(request: Request) {
     );
   }
 
+  const limited = await rateLimit([[`checkout:user:${user.id}`, LIMITS.checkoutUser]]);
+  if (limited) return limited;
+
   let raw: unknown;
   try {
     raw = await request.json();
@@ -55,7 +60,8 @@ export async function POST(request: Request) {
   try {
     const { authorizationUrl, reference } = await createCheckout(
       input,
-      new URL(request.url).origin,
+      // The Paystack callback uses the configured origin, not the request's Host header.
+      (await getEnv()).SITE_URL || new URL(request.url).origin,
       user.id
     );
     return NextResponse.json({ authorizationUrl, reference });

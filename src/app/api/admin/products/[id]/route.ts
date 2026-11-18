@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 import {
   deleteProduct,
   deleteUnusedMedia,
@@ -10,6 +11,8 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     let raw: unknown;
     try {
@@ -38,6 +41,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const deleted = await deleteProduct(params.id);
     if (!deleted) return NextResponse.json({ error: "Product not found." }, { status: 404 });

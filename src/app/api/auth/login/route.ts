@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createSession, findUserByEmail, SESSION_COOKIE, sessionCookieOptions, verifyPassword } from "@/lib/auth";
+import {
+  createSession,
+  findUserByEmail,
+  normaliseEmail,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+  verifyDummyPassword,
+  verifyPassword,
+} from "@/lib/auth";
+import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +25,21 @@ export async function POST(request: Request) {
   const password = typeof body.password === "string" ? body.password : "";
   const invalid = NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
 
-  if (!email || !password || password.length > 200) return invalid;
+  if (!email || email.length > 200 || !password || password.length > 200) return invalid;
+
+  // Per IP stops one client guessing many accounts; per email stops a botnet guessing one account.
+  const limited = await rateLimit([
+    [`login:ip:${clientIp(request)}`, LIMITS.loginIp],
+    [`login:email:${normaliseEmail(email)}`, LIMITS.loginEmail],
+  ]);
+  if (limited) return limited;
 
   const user = await findUserByEmail(email);
-  if (!user || !(await verifyPassword(password, user.password_hash))) return invalid;
+  if (!user) {
+    await verifyDummyPassword(password);
+    return invalid;
+  }
+  if (!(await verifyPassword(password, user.password_hash))) return invalid;
 
   const token = await createSession(user.id);
   (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions());

@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { resetPassword } from "@/lib/auth";
+import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const limited = await rateLimit([[`reset:ip:${clientIp(request)}`, LIMITS.resetIp]]);
+  if (limited) return limited;
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;

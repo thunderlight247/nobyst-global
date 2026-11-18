@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 import { createProduct, parseProductInput } from "@/lib/products";
 
-// Open admin (no login yet) by request. Kept out of navigation and indexed pages.
+// Admin only: every handler checks the signed-in user's role before doing anything.
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     let raw: unknown;
     try {

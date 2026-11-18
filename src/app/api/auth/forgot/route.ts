@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createPasswordReset, findUserByEmail, normaliseEmail } from "@/lib/auth";
 import { getEnv } from "@/lib/cloudflare";
 import { escapeHtml, sendEmail } from "@/lib/email";
+import { clientIp, hit, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ const DONE = NextResponse.json({
 });
 
 export async function POST(request: Request) {
+  const limited = await rateLimit([[`forgot:ip:${clientIp(request)}`, LIMITS.forgotIp]]);
+  if (limited) return limited;
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
@@ -21,10 +25,15 @@ export async function POST(request: Request) {
   const email = typeof body.email === "string" ? normaliseEmail(body.email) : "";
   if (!email || email.length > 200) return DONE;
 
+  // Cap reset emails per address so nobody can flood an inbox. The reply stays the same either
+  // way, so the limit does not reveal whether the account exists.
+  if (!(await hit(`forgot:email:${email}`, LIMITS.forgotEmail))) return DONE;
+
   const user = await findUserByEmail(email);
   if (user) {
     const token = await createPasswordReset(user.id);
     const { SITE_URL } = await getEnv();
+    // Prefer the configured origin so a spoofed Host header cannot redirect reset links.
     const origin = SITE_URL || new URL(request.url).origin;
     const link = `${origin}/account/reset?token=${encodeURIComponent(token)}`;
     await sendEmail(

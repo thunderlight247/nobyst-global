@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 import { getContent, parseContentInput, saveContent } from "@/lib/content";
 
-// Open admin (no login yet) by request. Kept out of navigation and indexed pages.
+// Admin only: every handler checks the signed-in user's role before doing anything.
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     return NextResponse.json({ content: await getContent() });
   } catch (error) {
@@ -14,6 +17,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     let raw: unknown;
     try {

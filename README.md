@@ -44,11 +44,34 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
 
 - **Public catalogue** — `/products` and one detail page per product (`/products/<slug>`) with
   compatibility lists, bulk-order enquiries and related products. The sitemap updates automatically.
-- **Admin** — `/admin` (not linked in navigation, hidden from search engines via robots/meta). There is
-  **no sign-in yet** by request; keep the URL private and add real authentication before letting anyone
-  else use it.
+- **Admin** — `/admin` (not linked in navigation, hidden from search engines). Only accounts with
+  `role = 'admin'` can open it or call `/api/admin/*`; guests are sent to sign in and other signed-in
+  accounts see an "Admin access needed" page with no data. To make an admin, create a normal account
+  on `/account`, then run:
+
+        npx wrangler d1 execute nobyst-catalog --remote \
+          --command "UPDATE users SET role = 'admin' WHERE email = 'you@example.com'"
+
+  Remove access the same way with `role = 'customer'`.
 - Admin features: add, edit and delete products; upload per-product photos (JPG/PNG/WebP, max 6 MB);
   per-product image descriptions; delete cleans up the uploaded photo.
+
+## Security
+
+- **Admin access** is checked server-side on the admin page and in every admin API handler (`requireAdmin()` in `src/lib/auth.ts`).
+- **Rate limits** (`src/lib/rate-limit.ts`, stored in the D1 `rate_limits` table) cover sign-in (per IP and per
+  email), sign-up, password reset, enquiries, checkout and uploads. Over the limit returns HTTP 429.
+- **CSRF**: `src/middleware.ts` refuses cross-site POST/PUT/PATCH/DELETE to `/api/*`; session cookies are
+  `HttpOnly; Secure; SameSite=Lax`.
+- **Headers** (`next.config.mjs`): Content-Security-Policy, HSTS, `X-Frame-Options: DENY`, nosniff,
+  Referrer-Policy, Permissions-Policy; private pages are `no-store`.
+- **Uploads** are accepted only when the file's bytes match JPG, PNG, WebP or glTF; image paths must be
+  same-site and 3D model links must be `https://`.
+- **Email**: enquiry acknowledgements do not quote the visitor's message, and are capped per address, so
+  the form cannot relay spam. Reset links and payment callbacks use `SITE_URL`, not the request host.
+- Passwords use PBKDF2-SHA256; session and reset tokens are stored only as SHA-256 hashes; reset tokens
+  are single-use and a reset signs out every session.
+- Secrets (`PAYSTACK_SECRET_KEY`, `RESEND_API_KEY`) are set with `wrangler secret put`, never in the repo.
 
 ## Cloudflare setup (D1 + R2)
 
@@ -70,6 +93,9 @@ unchanged).
         npx wrangler login
         npx wrangler d1 execute nobyst-catalog --remote --file=./db/schema.sql
         npx wrangler d1 execute nobyst-catalog --remote --file=./db/seed.sql
+
+   Then apply every file in `db/migrations/` in order (each with `--remote --file=...`). Migration
+   `0008_security.sql` adds admin roles and rate limits; until it runs, nobody can open the admin.
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is
    unchanged; the `workers.dev` hostname follows the account's subdomain).

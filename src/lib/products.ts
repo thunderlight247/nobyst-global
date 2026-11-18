@@ -149,10 +149,35 @@ async function uniqueSlug(title: string): Promise<string> {
   return `${base}-${Date.now()}`;
 }
 
+/** Same-site paths only: "/images/x.jpg" or "/api/media/...". Rejects "//host" and "/\\host". */
+function isLocalPath(path: string): boolean {
+  return (
+    path.startsWith("/") &&
+    !path.startsWith("//") &&
+    !path.startsWith("/\\") &&
+    path.length <= 500 &&
+    !/[\s"'<>]/.test(path)
+  );
+}
+
 function parseImagePath(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const path = value.trim();
-  return path.startsWith("/") && path.length <= 500 ? path : null;
+  return isLocalPath(path) ? path : null;
+}
+
+/** A local path, or an absolute https:// URL. Anything else (javascript:, data:, http:) is dropped. */
+function parseModelUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const url = value.trim();
+  if (!url) return null;
+  if (isLocalPath(url)) return url;
+  if (url.length > 500) return null;
+  try {
+    return new URL(url).protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Validates untrusted JSON from the admin form. */
@@ -219,14 +244,16 @@ export async function parseProductInput(raw: unknown): Promise<{ ok: true; value
   const fits = body.fits.filter((f): f is PhoneGroupId => typeof f === "string" && FIT_SET.has(f));
   if (fits.length < 1) return { ok: false, error: "Choose at least one phone family." };
 
-  const rawModel3d = typeof body.model3dUrl === "string" ? body.model3dUrl.trim() : null;
-  const model3dUrl = rawModel3d && rawModel3d.length <= 500 ? rawModel3d : null;
+  const model3dUrl = parseModelUrl(body.model3dUrl);
+  if (typeof body.model3dUrl === "string" && body.model3dUrl.trim() && !model3dUrl)
+    return { ok: false, error: "The 3D model must be an uploaded file or an https:// link." };
 
   const rawColors = Array.isArray(body.colors) ? body.colors : [];
   const colors = rawColors
     .filter((c): c is string => typeof c === "string")
     .map((c) => c.trim())
     .filter(Boolean)
+    .map((c) => c.slice(0, 40))
     .slice(0, 10);
 
   return {

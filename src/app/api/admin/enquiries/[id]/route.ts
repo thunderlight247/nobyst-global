@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 import { deleteEnquiry, updateEnquiryStatus, type EnquiryStatus } from "@/lib/enquiries";
 
 export const dynamic = "force-dynamic";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await request.json().catch(() => null);
     const status = body?.status as EnquiryStatus;
@@ -18,6 +21,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const ok = await deleteEnquiry(params.id);
   return NextResponse.json({ ok });
 }

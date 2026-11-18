@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser, requireAdmin } from "@/lib/auth";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { getEnv } from "@/lib/cloudflare";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +12,35 @@ const EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
   "model/gltf-binary": "glb",
   "model/gltf+json": "gltf",
-  "application/octet-stream": "glb", // common fallback for .glb files
 };
 
+function matchesSignature(head: Uint8Array, extension: string): boolean {
+  const ascii = (from: number, to: number) => String.fromCharCode(...head.slice(from, to));
+  switch (extension) {
+    case "jpg":
+      return head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+    case "png":
+      return ascii(1, 4) === "PNG" && head[0] === 0x89;
+    case "webp":
+      return ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP";
+    case "glb":
+      return ascii(0, 4) === "glTF";
+    case "gltf":
+      // glTF JSON starts with "{" (allowing a UTF-8 BOM or whitespace before it).
+      return /^\s*\{/.test(new TextDecoder().decode(head).replace(/^\uFEFF/, ""));
+    default:
+      return false;
+  }
+}
+
 export async function POST(request: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
+    const user = await getCurrentUser();
+    const limited = await rateLimit([[`upload:user:${user?.id}`, LIMITS.uploadUser]]);
+    if (limited) return limited;
+
     const form = await request.formData();
     const file = form.get("file");
 
@@ -22,7 +48,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Choose an image or 3D model file to upload." }, { status: 400 });
     }
 
-    // Determine extension by mime type or file name
+    // Determine extension by mime type, else by file name (browsers often send .glb as
+    // application/octet-stream). The byte check below is what actually decides.
     let extension = EXTENSIONS[file.type];
     if (!extension) {
       const lower = file.name.toLowerCase();
@@ -43,16 +70,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Files must be 15 MB or smaller." }, { status: 413 });
     }
 
+    // Check the file's leading bytes. The browser-supplied type and name are only hints, so a
+    // renamed HTML or script file cannot be stored and served from our origin.
+    const bytes = await file.arrayBuffer();
+    if (!matchesSignature(new Uint8Array(bytes.slice(0, 16)), extension)) {
+      return NextResponse.json(
+        { error: "That file's contents do not match its type. Use a real JPG, PNG, WebP or GLB/GLTF file." },
+        { status: 415 }
+      );
+    }
+
     const contentType =
       extension === "glb"
         ? "model/gltf-binary"
         : extension === "gltf"
         ? "model/gltf+json"
-        : file.type || "application/octet-stream";
+        : extension === "jpg"
+        ? "image/jpeg"
+        : `image/${extension}`;
 
     const key = `products/${crypto.randomUUID()}.${extension}`;
     const { MEDIA } = await getEnv();
-    await MEDIA.put(key, await file.arrayBuffer(), {
+    await MEDIA.put(key, bytes, {
       httpMetadata: {
         contentType,
         cacheControl: "public, max-age=31536000, immutable",
