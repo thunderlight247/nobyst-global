@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/AccountPanel";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, listUsers } from "@/lib/auth";
+import { listWholesalePrices } from "@/lib/wholesale";
 import { listProducts } from "@/lib/products";
 import { listEnquiries } from "@/lib/enquiries";
 import { listPaidOrders } from "@/lib/orders";
@@ -31,15 +32,15 @@ export default async function PayloadAdminPage({
       <main className="mx-auto max-w-lg px-5 py-20 text-center sm:px-6">
         <h1 className="text-2xl font-extrabold text-navy sm:text-3xl">Admin access needed</h1>
         <p className="mt-3 text-sm text-navy/70">
-          You are signed in as <strong>{user.email}</strong>, which is a customer account. Ask the site
-          owner to grant this account admin access, then reload this page.
+          You are signed in as <strong>{user.email}</strong>
+          {user.role === "partner" ? ", a partner account. Your area is the partner portal." : ", which is a customer account. Ask the site owner to grant this account admin access, then reload this page."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
-            href="/account"
+            href={user.role === "partner" ? "/partner" : "/account"}
             className="inline-flex min-h-[44px] items-center rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-royal"
           >
-            My account
+            {user.role === "partner" ? "Partner portal" : "My account"}
           </Link>
           <SignOutButton />
         </div>
@@ -47,12 +48,14 @@ export default async function PayloadAdminPage({
     );
   }
 
-  const [products, enquiries, orders, categories, content] = await Promise.all([
+  const [products, enquiries, orders, categories, content, users, wholesale] = await Promise.all([
     listProducts().catch(() => []),
     listEnquiries().catch(() => []),
     listPaidOrders().catch(() => []),
     listCategories().catch(() => []),
     getContent(),
+    listUsers().catch(() => []),
+    listWholesalePrices(),
   ]);
 
   const activeCollection = params.segments?.[0] || "dashboard";
@@ -66,6 +69,9 @@ export default async function PayloadAdminPage({
         initialCategories={categories}
         initialContent={content}
         initialSegment={activeCollection}
+        initialUsers={users}
+        initialWholesale={wholesale}
+        currentUser={{ id: user.id, email: user.email }}
       />
     </main>
   );

@@ -68,4 +68,5 @@ export const LIMITS = {
   enquiryEmail: { limit: 3, windowSeconds: 60 * 60 },
   checkoutUser: { limit: 20, windowSeconds: 60 * 60 },
   uploadUser: { limit: 60, windowSeconds: 60 * 60 },
+  partnerRequestUser: { limit: 20, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;

@@ -7,6 +7,7 @@ import {
   parseProductInput,
   updateProduct,
 } from "@/lib/products";
+import { parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
     const parsed = await parseProductInput(raw);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const wholesale = parseWholesaleInput(raw);
+    if (!wholesale.ok) return NextResponse.json({ error: wholesale.error }, { status: 400 });
 
     const previous = await getProductById(params.id);
     if (!previous) return NextResponse.json({ error: "Product not found." }, { status: 404 });
@@ -33,6 +36,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       [previous.image, ...previous.gallery],
       [product.image, ...product.gallery]
     );
+    // Only touch the wholesale price when the form sent it, so other saves keep it.
+    if (raw && typeof raw === "object" && "wholesalePrice" in raw) {
+      await saveWholesalePrice(product.id, wholesale.value);
+    }
     return NextResponse.json({ product });
   } catch (error) {
     console.error("Could not update product", error);

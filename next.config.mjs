@@ -43,13 +43,13 @@ const nextConfig = {
       { source: "/:path*", headers: securityHeaders },
       // Private pages and APIs must never be stored by shared caches.
       {
-        source: "/(admin|account|cart|checkout)/:path*",
+        source: "/(admin|account|cart|checkout|partner)/:path*",
         headers: [
           { key: "Cache-Control", value: "private, no-store" },
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
-      { source: "/api/(admin|auth|checkout)/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
+      { source: "/api/(admin|auth|checkout|partner)/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
     ];
   },
   // Resource limits to prevent memory spikes & system freezing on machines with <= 4GB RAM

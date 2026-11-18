@@ -5,15 +5,18 @@ import { AlertCircle, Loader2, Star, Upload, X } from "lucide-react";
 import { phoneGroups } from "@/data/site";
 import { DEFAULT_STOCK_STATUS, stockStatuses, type StockStatus } from "@/lib/catalogue";
 import type { Product } from "@/lib/products";
+import type { WholesalePrice } from "@/lib/wholesale";
 
 type Props = {
   product: Product | null;
   categories: string[];
-  onSaved: (product: Product) => void;
+  /** The product's current wholesale price, shown only to admins. */
+  wholesale?: WholesalePrice | null;
+  onSaved: (product: Product, wholesale: WholesalePrice | null) => void;
   onClose: () => void;
 };
 
-export default function ProductForm({ product, categories, onSaved, onClose }: Props) {
+export default function ProductForm({ product, categories, wholesale = null, onSaved, onClose }: Props) {
   const [name, setName] = useState(product?.name ?? "");
   const [category, setCategory] = useState<string>(product?.category ?? categories[0] ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
@@ -25,6 +28,10 @@ export default function ProductForm({ product, categories, onSaved, onClose }: P
   const [price, setPrice] = useState(
     product?.pricePesewas != null ? (product.pricePesewas / 100).toFixed(2) : ""
   );
+  const [wholesalePrice, setWholesalePrice] = useState(
+    wholesale ? (wholesale.pricePesewas / 100).toFixed(2) : ""
+  );
+  const [wholesaleMinQty, setWholesaleMinQty] = useState(String(wholesale?.minQuantity ?? 5));
   const [stockStatus, setStockStatus] = useState<StockStatus>(
     product?.stockStatus ?? DEFAULT_STOCK_STATUS
   );
@@ -116,6 +123,8 @@ export default function ProductForm({ product, categories, onSaved, onClose }: P
           .map((c) => c.trim())
           .filter(Boolean),
         price: price.trim(),
+        wholesalePrice: wholesalePrice.trim(),
+        wholesaleMinQty: wholesaleMinQty.trim(),
         stockStatus,
         imageAlt,
         fits,
@@ -127,7 +136,13 @@ export default function ProductForm({ product, categories, onSaved, onClose }: P
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "The product could not be saved.");
-      onSaved(data.product as Product);
+      const minQty = Number(wholesaleMinQty) || 5;
+      onSaved(
+        data.product as Product,
+        wholesalePrice.trim()
+          ? { pricePesewas: Math.round(Number(wholesalePrice.replace(/[^\d.]/g, "")) * 100), minQuantity: minQty }
+          : null
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "The product could not be saved.");
     } finally {
@@ -240,6 +255,46 @@ export default function ProductForm({ product, categories, onSaved, onClose }: P
               </select>
             </div>
           </div>
+
+          <fieldset className="grid gap-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4 sm:grid-cols-2">
+            <legend className="px-1 text-xs font-bold text-amber-800">Partner wholesale (private)</legend>
+            <div>
+              <label htmlFor="p-wholesale" className="mb-1.5 block text-xs font-bold text-navy">
+                Wholesale price in cedis
+              </label>
+              <div className="relative">
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-navy/45"
+                >
+                  GH₵
+                </span>
+                <input
+                  id="p-wholesale"
+                  value={wholesalePrice}
+                  onChange={(e) => setWholesalePrice(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="30.00"
+                  className="min-h-[44px] w-full rounded-xl border border-navy/20 bg-white py-2.5 pl-14 pr-3.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-navy/55">
+                Only signed-in partners see this. Leave blank to keep it off the partner price list.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="p-wholesale-min" className="mb-1.5 block text-xs font-bold text-navy">
+                Minimum units per order
+              </label>
+              <input
+                id="p-wholesale-min"
+                value={wholesaleMinQty}
+                onChange={(e) => setWholesaleMinQty(e.target.value)}
+                inputMode="numeric"
+                className="min-h-[44px] w-full rounded-xl border border-navy/20 bg-white px-3.5 py-2.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+              />
+            </div>
+          </fieldset>
 
           <div>
             <label htmlFor="p-description" className="mb-1.5 block text-xs font-bold text-navy">

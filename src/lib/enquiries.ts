@@ -15,6 +15,8 @@ export type Enquiry = {
   quantity?: number | null;
   status: EnquiryStatus;
   createdAt: string;
+  /** Set when a signed-in partner sent it from the partner portal. */
+  userId?: string | null;
 };
 
 export type EnquiryInput = {
@@ -40,6 +42,7 @@ type EnquiryRow = {
   quantity: number | null;
   status: string;
   created_at: string;
+  user_id?: string | null;
 };
 
 function mapRow(row: EnquiryRow): Enquiry {
@@ -55,6 +58,7 @@ function mapRow(row: EnquiryRow): Enquiry {
     quantity: row.quantity,
     status: (row.status as EnquiryStatus) || "new",
     createdAt: row.created_at,
+    userId: row.user_id ?? null,
   };
 }
 
@@ -130,4 +134,46 @@ export async function deleteEnquiry(id: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Saves a bulk-order request from the partner portal, owned by the partner's account.
+ * Unlike createEnquiry this throws on failure, so the partner is told if it did not save.
+ */
+export async function createPartnerRequest(
+  userId: string,
+  input: Omit<EnquiryInput, "type">
+): Promise<Enquiry> {
+  const { DB } = await getEnv();
+  const id = crypto.randomUUID();
+  await DB.prepare(
+    `INSERT INTO enquiries (id, type, name, email, phone, topic, message, product_name, quantity, status, user_id)
+     VALUES (?, 'bulk_order', ?, ?, ?, ?, ?, ?, ?, 'new', ?)`
+  )
+    .bind(
+      id,
+      input.name,
+      input.email,
+      input.phone ?? null,
+      input.topic ?? null,
+      input.message,
+      input.productName ?? null,
+      input.quantity ?? null,
+      userId
+    )
+    .run();
+  const row = await DB.prepare("SELECT * FROM enquiries WHERE id = ?").bind(id).first<EnquiryRow>();
+  if (!row) throw new Error("partner request not saved");
+  return mapRow(row);
+}
+
+/** Requests this account sent from the partner portal, newest first. Never matched by email. */
+export async function listEnquiriesForUser(userId: string): Promise<Enquiry[]> {
+  const { DB } = await getEnv();
+  const { results } = await DB.prepare(
+    "SELECT * FROM enquiries WHERE user_id = ? ORDER BY created_at DESC LIMIT 100"
+  )
+    .bind(userId)
+    .all<EnquiryRow>();
+  return results.map(mapRow);
 }

@@ -7,8 +7,13 @@ const SESSION_DAYS = 30;
 const RESET_MINUTES = 60;
 const PBKDF2_ITERATIONS = 100_000;
 
-export type Role = "customer" | "admin";
-export type CurrentUser = { id: string; email: string; name: string; role: Role };
+export type Role = "customer" | "partner" | "admin";
+export const ROLES: Role[] = ["customer", "partner", "admin"];
+export type CurrentUser = { id: string; email: string; name: string; role: Role; company: string | null };
+
+export function isRole(value: unknown): value is Role {
+  return typeof value === "string" && (ROLES as string[]).includes(value);
+}
 
 function toBase64(bytes: Uint8Array): string {
   let s = "";
@@ -94,7 +99,7 @@ export async function createUser(email: string, name: string, password: string):
   await DB.prepare("INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)")
     .bind(id, normalised, name, await hashPassword(password))
     .run();
-  return { id, email: normalised, name, role: "customer" };
+  return { id, email: normalised, name, role: "customer", company: null };
 }
 
 /** Creates a session row and returns the raw token for the cookie. */
@@ -123,16 +128,22 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token || token.length > 200) return null;
   const { DB } = await getEnv();
-  // u.* rather than named columns: the role column arrives with migration 0008, and a database
-  // without it simply yields customers, so the admin stays locked rather than open.
+  // u.* rather than named columns: role (0008) and company (0009) arrive with migrations, and a
+  // database without them simply yields customers, so admin and partner areas stay locked.
   const row = await DB.prepare(
     `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.expires_at > ?`
   )
     .bind(await sha256Hex(token), new Date().toISOString())
-    .first<{ id: string; email: string; name: string; role?: unknown }>();
+    .first<{ id: string; email: string; name: string; role?: unknown; company?: string | null }>();
   if (!row) return null;
-  return { id: row.id, email: row.email, name: row.name, role: row.role === "admin" ? "admin" : "customer" };
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    role: isRole(row.role) ? row.role : "customer",
+    company: row.company ?? null,
+  };
 }
 
 /** The signed-in admin, or null for guests and customers. */
@@ -146,8 +157,113 @@ export async function getAdminUser(): Promise<CurrentUser | null> {
  * caller is an admin. Usage: `const denied = await requireAdmin(); if (denied) return denied;`
  */
 export async function requireAdmin(): Promise<NextResponse | null> {
+  const result = await requireRole("admin");
+  return "denied" in result ? result.denied : null;
+}
+
+/**
+ * Guard for role-restricted handlers that also need the user. Returns `{ user }` when the caller
+ * has one of `roles`, otherwise `{ denied }` holding the 401/403 response to send back.
+ */
+export async function requireRole(
+  ...roles: Role[]
+): Promise<{ user: CurrentUser } | { denied: NextResponse }> {
   const user = await getCurrentUser().catch(() => null);
-  if (!user) return NextResponse.json({ error: "Please sign in." }, { status: 401 });
-  if (user.role !== "admin") return NextResponse.json({ error: "Not allowed." }, { status: 403 });
-  return null;
+  if (!user) return { denied: NextResponse.json({ error: "Please sign in." }, { status: 401 }) };
+  if (!roles.includes(user.role)) {
+    return { denied: NextResponse.json({ error: "Not allowed." }, { status: 403 }) };
+  }
+  return { user };
+}
+
+export type UserSummary = {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  company: string | null;
+  createdAt: string;
+};
+
+/** Every account for the admin Users tab, admins and partners first. */
+export async function listUsers(): Promise<UserSummary[]> {
+  const { DB } = await getEnv();
+  const { results } = await DB.prepare(
+    `SELECT id, email, name, role, company, created_at FROM users
+     ORDER BY CASE role WHEN 'admin' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END, created_at DESC
+     LIMIT 500`
+  ).all<{ id: string; email: string; name: string; role: string; company: string | null; created_at: string }>();
+  return results.map((r) => ({
+    id: r.id,
+    email: r.email,
+    name: r.name,
+    role: isRole(r.role) ? r.role : "customer",
+    company: r.company,
+    createdAt: r.created_at,
+  }));
+}
+
+/**
+ * Changes an account's role and company. Signs the account out everywhere when its role changes,
+ * so a removed admin or partner loses access immediately rather than at session expiry.
+ */
+export async function updateUserAccess(
+  id: string,
+  role: Role,
+  company: string | null
+): Promise<UserSummary | null> {
+  const { DB } = await getEnv();
+  const before = await DB.prepare("SELECT role FROM users WHERE id = ?").bind(id).first<{ role: string }>();
+  if (!before) return null;
+  await DB.prepare("UPDATE users SET role = ?, company = ? WHERE id = ?").bind(role, company, id).run();
+  if (before.role !== role) await DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id).run();
+  const users = await listUsers();
+  return users.find((u) => u.id === id) ?? null;
+}
+
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: SESSION_DAYS * 86_400,
+  };
+}
+
+/** Creates a single-use reset token and returns the raw value for the email link. */
+export async function createPasswordReset(userId: string): Promise<string> {
+  const { DB } = await getEnv();
+  const token = randomToken();
+  const expires = new Date(Date.now() + RESET_MINUTES * 60_000).toISOString();
+  await DB.prepare("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES (?, ?, ?)")
+    .bind(await sha256Hex(token), userId, expires)
+    .run();
+  return token;
+}
+
+/** Sets the new password if the token is valid, unused and unexpired. Signs out other sessions. */
+export async function resetPassword(token: string, password: string): Promise<boolean> {
+  const { DB } = await getEnv();
+  const tokenHash = await sha256Hex(token);
+  const now = new Date().toISOString();
+  // Claim the token atomically first, so two concurrent requests cannot both use it.
+  const row = await DB.prepare(
+    `UPDATE password_resets SET used_at = ?
+     WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?
+     RETURNING user_id`
+  )
+    .bind(now, tokenHash, now)
+    .first<{ user_id: string }>();
+  if (!row) return false;
+
+  await DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
+    .bind(await hashPassword(password), row.user_id)
+    .run();
+  // A reset signs out every session and voids any other outstanding reset links.
+  await DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(row.user_id).run();
+  await DB.prepare("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL")
+    .bind(now, row.user_id)
+    .run();
+  return true;
 }

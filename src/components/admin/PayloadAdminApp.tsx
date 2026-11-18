@@ -32,11 +32,13 @@ import type { PaidOrder } from "@/lib/orders";
 import type { CategoryNode } from "@/lib/categories";
 import { site } from "@/data/site";
 import { formatPrice } from "@/lib/catalogue";
-import StockBadge from "@/components/StockBadge";
 import ProductForm from "@/components/admin/ProductForm";
 import CategoryEditor from "@/components/admin/CategoryEditor";
 import ContentEditor from "@/components/admin/ContentEditor";
 import type { ContentValues } from "@/lib/content-blocks";
+import UserManager from "@/components/admin/UserManager";
+import type { UserSummary } from "@/lib/auth";
+import type { WholesalePrice } from "@/lib/wholesale";
 
 type Props = {
   initialProducts: Product[];
@@ -45,9 +47,10 @@ type Props = {
   initialCategories: CategoryNode[];
   initialContent: ContentValues;
   initialSegment: string;
+  initialUsers: UserSummary[];
+  initialWholesale: Record<string, WholesalePrice>;
+  currentUser: { id: string; email: string };
 };
-
-type Role = "admin" | "staff";
 
 export default function PayloadAdminApp({
   initialProducts,
@@ -56,13 +59,16 @@ export default function PayloadAdminApp({
   initialCategories,
   initialContent,
   initialSegment,
+  initialUsers,
+  initialWholesale,
+  currentUser,
 }: Props) {
   const router = useRouter();
   const [categories, setCategories] = useState<CategoryNode[]>(initialCategories);
   const categoryNames = categories.map((c) => c.name);
-  const [role, setRole] = useState<Role>("admin");
+  const [wholesale, setWholesale] = useState<Record<string, WholesalePrice>>(initialWholesale);
   const [tab, setTab] = useState<string>(
-    ["dashboard", "products", "categories", "content", "enquiries", "orders", "media"].includes(initialSegment)
+    ["dashboard", "products", "categories", "content", "enquiries", "orders", "users", "media"].includes(initialSegment)
       ? initialSegment
       : "dashboard"
   );
@@ -78,11 +84,11 @@ export default function PayloadAdminApp({
     setTimeout(() => setActionStatus(null), 4000);
   }
 
-  // Quick stock status update for Store Staff
+  // Quick stock status update from the products table
   async function quickUpdateStock(product: Product, newStatus: string) {
     try {
       const res = await fetch(`/api/admin/products/${product.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: product.name,
@@ -100,7 +106,7 @@ export default function PayloadAdminApp({
         }),
       });
       if (!res.ok) throw new Error("Failed to update stock");
-      const updated = await res.json();
+      const { product: updated } = (await res.json()) as { product: Product };
       setProducts((prev) => prev.map((p) => (p.id === product.id ? updated : p)));
       notify(`Stock status updated for ${product.name}`);
     } catch {
@@ -152,6 +158,7 @@ export default function PayloadAdminApp({
   const lowStockCount = products.filter((p) => p.stockStatus === "low_stock").length;
   const models3dCount = products.filter((p) => Boolean(p.model3dUrl)).length;
   const newEnquiriesCount = enquiries.filter((e) => e.status === "new").length;
+  const partnerCount = initialUsers.filter((u) => u.role === "partner").length;
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -189,6 +196,7 @@ export default function PayloadAdminApp({
             { id: "content", label: "Page Text", icon: FileText, badge: null },
             { id: "enquiries", label: "Enquiries", icon: Inbox, badge: newEnquiriesCount ? `${newEnquiriesCount} new` : null },
             { id: "orders", label: "Orders", icon: ShoppingBag, badge: initialOrders.length ? `${initialOrders.length} paid` : null },
+            { id: "users", label: "Users & Partners", icon: UserCheck, badge: partnerCount ? `${partnerCount} partners` : null },
             { id: "media", label: "Media & 3D Assets", icon: FileBox, badge: models3dCount ? `${models3dCount} 3D` : null },
           ].map((item) => {
             const Icon = item.icon;
@@ -222,34 +230,12 @@ export default function PayloadAdminApp({
           })}
         </nav>
 
-        {/* Role toggle badge */}
-        <div className="m-4 mt-auto rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-white/60">Active Role:</span>
-            <span className="font-bold uppercase tracking-wider text-gold">
-              {role === "admin" ? "Admin (Full)" : "Store Staff"}
-            </span>
-          </div>
-          <div className="mt-2.5 flex gap-1 rounded-lg bg-navy/80 p-1">
-            <button
-              type="button"
-              onClick={() => setRole("admin")}
-              className={`flex-1 rounded-md py-1 text-center text-[11px] font-bold transition-all ${
-                role === "admin" ? "bg-gold text-navy shadow-sm" : "text-white/60 hover:text-white"
-              }`}
-            >
-              Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("staff")}
-              className={`flex-1 rounded-md py-1 text-center text-[11px] font-bold transition-all ${
-                role === "staff" ? "bg-royal text-white shadow-sm" : "text-white/60 hover:text-white"
-              }`}
-            >
-              Store Staff
-            </button>
-          </div>
+        <div className="m-4 mt-auto rounded-xl border border-white/10 bg-white/5 p-3 text-xs">
+          <span className="text-white/60">Signed in as admin</span>
+          <p className="mt-0.5 truncate font-bold text-white">{currentUser.email}</p>
+          <Link href="/partner" className="mt-2 inline-block text-[11px] font-bold text-gold hover:underline">
+            Preview partner portal →
+          </Link>
         </div>
       </aside>
 
@@ -280,7 +266,7 @@ export default function PayloadAdminApp({
                 </p>
               </div>
 
-              {role === "admin" && (
+              {(
                 <button
                   type="button"
                   onClick={() => setEditingProduct("new")}
@@ -399,7 +385,7 @@ export default function PayloadAdminApp({
                 </p>
               </div>
 
-              {role === "admin" && (
+              {(
                 <button
                   type="button"
                   onClick={() => setEditingProduct("new")}
@@ -471,8 +457,7 @@ export default function PayloadAdminApp({
                           {formatPrice(p.pricePesewas) ?? "Not set"}
                         </td>
                         <td className="px-4 py-3">
-                          {role === "staff" ? (
-                            <select
+                          <select
                               value={p.stockStatus}
                               onChange={(e) => quickUpdateStock(p, e.target.value)}
                               className="rounded-lg border border-navy/20 bg-white px-2 py-1 text-[11px] font-bold text-navy"
@@ -481,9 +466,6 @@ export default function PayloadAdminApp({
                               <option value="low_stock">Low stock</option>
                               <option value="out_of_stock">Out of stock</option>
                             </select>
-                          ) : (
-                            <StockBadge status={p.stockStatus} />
-                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -513,7 +495,7 @@ export default function PayloadAdminApp({
                             >
                               <Eye size={15} />
                             </Link>
-                            {role === "admin" && (
+                            {(
                               <button
                                 type="button"
                                 onClick={() => setEditingProduct(p)}
@@ -544,7 +526,7 @@ export default function PayloadAdminApp({
               </p>
             </div>
 
-            {role === "admin" && (
+            {(
               <CategoryEditor
                 categories={categories}
                 onChanged={(next, message) => {
@@ -608,7 +590,7 @@ export default function PayloadAdminApp({
 
         {/* PAGE TEXT (CMS blocks) */}
         {tab === "content" && (
-          <ContentEditor initialContent={initialContent} canEdit={role === "admin"} onNotify={notify} />
+          <ContentEditor initialContent={initialContent} canEdit onNotify={notify} />
         )}
 
         {/* TAB 4: ENQUIRIES COLLECTION */}
@@ -660,6 +642,10 @@ export default function PayloadAdminApp({
           </div>
         )}
 
+        {tab === "users" && (
+          <UserManager initialUsers={initialUsers} currentUserId={currentUser.id} onNotify={notify} />
+        )}
+
         {tab === "enquiries" && (
           <div>
             <div className="flex items-center justify-between">
@@ -697,6 +683,11 @@ export default function PayloadAdminApp({
                           {enq.type.replace("_", " ")}
                         </span>
                         <span className="text-xs font-bold text-navy">{enq.name}</span>
+                        {enq.userId && (
+                          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                            Partner portal
+                          </span>
+                        )}
                         {enq.createdAt && (
                           <span className="text-[11px] text-navy/40">
                             {new Date(enq.createdAt).toLocaleDateString()}
@@ -715,7 +706,7 @@ export default function PayloadAdminApp({
                           <option value="closed">Closed</option>
                         </select>
 
-                        {role === "admin" && (
+                        {(
                           <button
                             type="button"
                             onClick={() => handleDeleteEnquiry(enq.id)}
@@ -811,7 +802,14 @@ export default function PayloadAdminApp({
         <ProductForm
           product={editingProduct === "new" ? null : editingProduct}
           categories={categoryNames}
-          onSaved={(saved) => {
+          wholesale={editingProduct === "new" ? null : wholesale[editingProduct.id] ?? null}
+          onSaved={(saved, savedWholesale) => {
+            setWholesale((prev) => {
+              const next = { ...prev };
+              if (savedWholesale) next[saved.id] = savedWholesale;
+              else delete next[saved.id];
+              return next;
+            });
             setProducts((prev) => {
               const idx = prev.findIndex((p) => p.id === saved.id);
               if (idx >= 0) {

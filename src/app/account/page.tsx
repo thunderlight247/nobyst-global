@@ -48,6 +48,22 @@ export default async function AccountPage({
         <SignOutButton />
       </div>
 
+      {(user.role === "partner" || user.role === "admin") && (
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold/40 bg-gold-100/60 p-5">
+          <p className="text-sm text-navy">
+            {user.role === "partner"
+              ? `Signed in as a partner${user.company ? ` for ${user.company}` : ""}.`
+              : "You are an administrator."}
+          </p>
+          <a
+            href={user.role === "partner" ? "/partner" : "/admin"}
+            className="inline-flex min-h-[44px] items-center rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-royal"
+          >
+            {user.role === "partner" ? "Open partner portal" : "Open admin"}
+          </a>
+        </div>
+      )}
+
       <h2 className="mt-10 font-display text-xl font-bold text-navy">Your orders</h2>
       {orders.length === 0 ? (
         <p className="mt-3 rounded-2xl border border-navy/10 bg-white p-6 text-sm text-navy/70">
