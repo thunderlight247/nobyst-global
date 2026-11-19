@@ -86,4 +86,5 @@ export const LIMITS = {
   twoFactorSetupUser: { limit: 20, windowSeconds: 60 * 60 },
   // "Confirm it's you": 5 wrong password/code tries per account per 15 minutes.
   reauthUser: { limit: 5, windowSeconds: 15 * 60 },
+  partnerWrite: { limit: 120, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;

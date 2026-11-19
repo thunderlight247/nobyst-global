@@ -89,6 +89,25 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
   Wholesale prices are set per product in the admin product form and stored in their own
   `wholesale_prices` table, which public pages never read. Partners only see requests they sent while
   signed in (matched by account id, never by email). New partner requests email the admin inbox.
+- **Marketplace (partners sell on nobyst.com)** — see `docs/MARKETPLACE_PLAN.md`.
+  - **Partner dashboard** (`/partner`): Overview, Products (add, edit, hide, delete, photo uploads,
+    request a new category), Orders (their own lines only, with the customer's name, phone and
+    delivery address; they update the delivery status and the customer is emailed), Earnings (sales,
+    NOBYST commission, delivered vs. not yet delivered, payouts, payout details), Wholesale (trusted
+    partners) and Account & security.
+  - **Going live**: a pending partner's new or edited products wait in **Admin → Approvals**; a
+    trusted partner's go live straight away. Anything an admin sends back with a note returns for
+    review when edited, even from a trusted partner. Suspended partners' products disappear from the
+    shop. Products show "Sold by <business>".
+  - **Isolation**: every partner API checks ownership on the server; partners can only use photos
+    from their own upload folder (`partners/<id>/` in R2); a photo still used by any product is never
+    deleted.
+  - **Money**: customers pay NOBYST through Paystack. Each order line records the seller and the
+    commission rate at the time of sale (default 10%, set per partner in **Admin → Partner shops**).
+    Earnings count once a line is marked delivered; admins record payouts (mobile money or bank),
+    which emails the partner. Changing a commission or recording a payout asks "Confirm it's you".
+  - **Admin → Activity** lists everything partners add, edit, hide or delete, every order status they
+    set, payout-detail changes, and every admin decision about partners.
 - **Partner applications** — the **Partner with us** form needs a business name (plain text, no web
   links, up to 80 characters). Each application is emailed to the admin inbox and, unless the email
   already belongs to a partner or cannot receive mail, the business is **emailed its invitation
@@ -154,7 +173,8 @@ unchanged).
    order statuses and partner quotes, and `0012_clear_placeholder_prices.sql` removes the test prices
    from 0007, `0013_two_factor.sql` adds two-step sign-in,
    `0014_reauth.sql` the "Confirm it's you" timestamp and `0015_partner_applications.sql`
-   automatic invitations and partner status. Until they run, nobody can open the admin or the partner portal.
+   automatic invitations and partner status, and `0016_marketplace.sql` partner products, order lines
+   per seller, category requests, payouts and the activity log. Until they run, nobody can open the admin or the partner portal.
    (`0002` is already part of `schema.sql` on new databases.)
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is

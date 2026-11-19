@@ -5,7 +5,10 @@ import { SignOutButton } from "@/components/AccountPanel";
 import { getCurrentUser, getPendingUser, isStaff, listUsers } from "@/lib/auth";
 import { listWholesalePrices } from "@/lib/wholesale";
 import { listInvitations } from "@/lib/invitations";
-import { listProducts } from "@/lib/products";
+import { listCategoryRequests } from "@/lib/marketplace";
+import { listPartnerSummaries } from "@/lib/partner-orders";
+import { listActivity } from "@/lib/activity";
+import { listAllProducts } from "@/lib/products";
 import { listEnquiries } from "@/lib/enquiries";
 import { listPaidOrders, listUnconfirmedOrders } from "@/lib/orders";
 import { listCategories } from "@/lib/categories";
@@ -56,8 +59,8 @@ export default async function PayloadAdminPage({
     );
   }
 
-  const [products, enquiries, orders, unconfirmed, categories, content, users, wholesale, invitations] = await Promise.all([
-    listProducts().catch(() => []),
+  const [products, enquiries, orders, unconfirmed, categories, content, users, wholesale, invitations, categoryRequests, partners, activity] = await Promise.all([
+    listAllProducts().catch(() => []),
     listEnquiries().catch(() => []),
     listPaidOrders().catch(() => []),
     listUnconfirmedOrders().catch(() => []),
@@ -66,6 +69,9 @@ export default async function PayloadAdminPage({
     listUsers().catch(() => []),
     listWholesalePrices(),
     listInvitations(),
+    listCategoryRequests(),
+    listPartnerSummaries(),
+    listActivity({ limit: 300 }),
   ]);
 
   const activeCollection = segs?.[0] || "dashboard";
@@ -83,6 +89,9 @@ export default async function PayloadAdminPage({
         initialUsers={users}
         initialWholesale={wholesale}
         initialInvitations={invitations}
+        initialCategoryRequests={categoryRequests}
+        initialPartners={partners}
+        initialActivity={activity}
         currentUser={{ id: user.id, email: user.email, role: user.role }}
       />
     </main>

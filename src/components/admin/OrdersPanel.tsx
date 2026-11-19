@@ -151,6 +151,11 @@ export default function OrdersPanel({ initialOrders, initialUnconfirmed, onNotif
                   <li key={i}>
                     {item.quantity} × {item.productName}
                     {item.color ? ` (${item.color})` : ""} at {formatPrice(item.unitPesewas)}
+                    {item.partnerName && (
+                      <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                        Sold by {item.partnerName} · {FULFILMENT_STATUSES.find((s) => s.id === item.fulfilmentStatus)?.label ?? "New"}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -89,7 +89,10 @@ export async function createCheckout(
     color: string;
     quantity: number;
     unitPesewas: number;
+    partnerId: string | null;
+    commissionBps: number | null;
   }[] = [];
+  const commissions = new Map<string, number>();
 
   for (const item of input.items) {
     if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 50) {
@@ -103,12 +106,25 @@ export async function createCheckout(
     if (product.pricePesewas === null || product.pricePesewas <= 0) {
       throw new CheckoutError(`${product.name} is priced on request. Please contact us to order it.`);
     }
+    // Partner lines remember NOBYST's commission rate at the moment of sale.
+    let commissionBps: number | null = null;
+    if (product.partnerId) {
+      if (!commissions.has(product.partnerId)) {
+        const row = await env.DB.prepare("SELECT commission_bps FROM users WHERE id = ?")
+          .bind(product.partnerId)
+          .first<{ commission_bps: number | null }>();
+        commissions.set(product.partnerId, row?.commission_bps ?? 1000);
+      }
+      commissionBps = commissions.get(product.partnerId)!;
+    }
     lines.push({
       slug: product.slug,
       name: product.name,
       color: item.color,
       quantity: item.quantity,
       unitPesewas: product.pricePesewas,
+      partnerId: product.partnerId,
+      commissionBps,
     });
   }
 
@@ -140,10 +156,10 @@ export async function createCheckout(
 
   for (const l of lines) {
     await env.DB.prepare(
-      `INSERT INTO order_items (id, order_id, product_slug, product_name, color, quantity, unit_pesewas)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO order_items (id, order_id, product_slug, product_name, color, quantity, unit_pesewas, partner_id, commission_bps)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-      .bind(crypto.randomUUID(), orderId, l.slug, l.name, l.color, l.quantity, l.unitPesewas)
+      .bind(crypto.randomUUID(), orderId, l.slug, l.name, l.color, l.quantity, l.unitPesewas, l.partnerId, l.commissionBps)
       .run();
   }
 
@@ -179,7 +195,16 @@ export type OrderSummary = {
   };
   enquiryId: string | null;
   paymentUrl: string | null;
-  items: { productName: string; color: string; quantity: number; unitPesewas: number }[];
+  items: {
+    productName: string;
+    color: string;
+    quantity: number;
+    unitPesewas: number;
+    /** Seller's business name for partner lines; null for NOBYST's own. */
+    partnerName?: string | null;
+    /** Delivery status of a partner line, updated by the partner. */
+    fulfilmentStatus?: string | null;
+  }[];
 };
 
 /** @deprecated Kept for existing imports; every order list now returns OrderSummary. */
@@ -218,17 +243,32 @@ async function queryOrders(where: string, binds: unknown[], order: string, limit
 
   const ids = orders.map((o) => o.id);
   const { results: rows } = await DB.prepare(
-    `SELECT order_id, product_name, color, quantity, unit_pesewas FROM order_items WHERE order_id IN (${ids
-      .map(() => "?")
-      .join(",")})`
+    `SELECT oi.*, u.company AS partner_name FROM order_items oi LEFT JOIN users u ON u.id = oi.partner_id
+     WHERE oi.order_id IN (${ids.map(() => "?").join(",")})`
   )
     .bind(...ids)
-    .all<{ order_id: string; product_name: string; color: string; quantity: number; unit_pesewas: number }>();
+    .all<{
+      order_id: string;
+      product_name: string;
+      color: string;
+      quantity: number;
+      unit_pesewas: number;
+      partner_id?: string | null;
+      partner_name?: string | null;
+      fulfilment_status?: string | null;
+    }>();
 
   const byOrder = new Map<string, OrderSummary["items"]>();
   for (const r of rows) {
     const list = byOrder.get(r.order_id) ?? [];
-    list.push({ productName: r.product_name, color: r.color, quantity: r.quantity, unitPesewas: r.unit_pesewas });
+    list.push({
+      productName: r.product_name,
+      color: r.color,
+      quantity: r.quantity,
+      unitPesewas: r.unit_pesewas,
+      partnerName: r.partner_id ? r.partner_name ?? "Partner" : null,
+      fulfilmentStatus: r.partner_id ? r.fulfilment_status ?? "new" : null,
+    });
     byOrder.set(r.order_id, list);
   }
 

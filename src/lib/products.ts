@@ -25,7 +25,21 @@ export type Product = {
   imageAlt: string;
   fits: PhoneGroupId[];
   sortOrder: number;
+  /** The partner selling it, or null for NOBYST's own products. */
+  partnerId: string | null;
+  /** The partner's business name, shown as "Sold by". */
+  partnerName: string | null;
+  /** live (in the shop), pending (awaiting approval), rejected, or hidden. */
+  status: ProductStatus;
+  /** The admin's note when a product is rejected or hidden. */
+  reviewNote: string | null;
 };
+
+export type ProductStatus = "live" | "pending" | "rejected" | "hidden";
+export const PRODUCT_STATUSES: ProductStatus[] = ["live", "pending", "rejected", "hidden"];
+export function isProductStatus(value: unknown): value is ProductStatus {
+  return typeof value === "string" && (PRODUCT_STATUSES as string[]).includes(value);
+}
 
 export type ProductInput = {
   name: string;
@@ -58,6 +72,10 @@ type ProductRow = {
   image_alt: string;
   fits: string;
   sort_order: number;
+  partner_id?: string | null;
+  status?: string | null;
+  review_note?: string | null;
+  partner_company?: string | null;
 };
 
 const FIT_SET = new Set<string>(phoneGroups.map((g) => g.id));
@@ -92,38 +110,77 @@ function mapRow(row: ProductRow, categoryNames: Set<string>): Product {
     imageAlt: row.image_alt,
     fits: parseList(row.fits).filter((f): f is PhoneGroupId => FIT_SET.has(f)),
     sortOrder: row.sort_order,
+    partnerId: row.partner_id ?? null,
+    partnerName: row.partner_id ? row.partner_company ?? "Partner" : null,
+    status: isProductStatus(row.status) ? row.status : "live",
+    reviewNote: row.review_note ?? null,
   };
 }
 
-export async function listProducts(): Promise<Product[]> {
+/**
+ * Shown in the shop: live, and not from a suspended partner. Every public listing and lookup
+ * uses this, so pending, rejected and hidden products never reach customers or checkout.
+ */
+const PUBLIC_FILTER = "p.status = 'live' AND (p.partner_id IS NULL OR u.partner_status IS NULL OR u.partner_status != 'suspended')";
+
+/** Products joined with their seller. `where` is a fixed SQL fragment; values go in `binds`. */
+async function queryProducts(where: string, binds: unknown[], tail = "ORDER BY p.sort_order ASC, p.name ASC"): Promise<ProductRow[]> {
   const { DB } = await getEnv();
-  const { results } = await DB.prepare(
-    "SELECT * FROM products ORDER BY sort_order ASC, name ASC"
-  ).all<ProductRow>();
-  const names = new Set(await listCategoryNames());
-  return results.map((row) => mapRow(row, names));
+  try {
+    const { results } = await DB.prepare(
+      `SELECT p.*, u.company AS partner_company FROM products p LEFT JOIN users u ON u.id = p.partner_id
+       WHERE ${where} ${tail}`
+    )
+      .bind(...binds)
+      .all<ProductRow>();
+    return results;
+  } catch (err) {
+    // Before migration 0016 (no partner_id/status columns): every product is NOBYST's and live.
+    const legacyWhere = where.replace(PUBLIC_FILTER, "1 = 1");
+    if (legacyWhere.includes("partner_id") || legacyWhere.includes("status")) throw err;
+    const { results } = await DB.prepare(`SELECT p.* FROM products p WHERE ${legacyWhere} ${tail}`)
+      .bind(...binds)
+      .all<ProductRow>();
+    return results;
+  }
 }
 
+/** What the shop shows: live products only. */
+export async function listProducts(): Promise<Product[]> {
+  const names = new Set(await listCategoryNames());
+  return (await queryProducts(PUBLIC_FILTER, [])).map((row) => mapRow(row, names));
+}
+
+/** Every product in any status, for the admin. */
+export async function listAllProducts(): Promise<Product[]> {
+  const names = new Set(await listCategoryNames());
+  return (await queryProducts("1 = 1", [])).map((row) => mapRow(row, names));
+}
+
+/** One partner's own products in any status, for their dashboard. */
+export async function listPartnerProducts(partnerId: string): Promise<Product[]> {
+  const names = new Set(await listCategoryNames());
+  return (await queryProducts("p.partner_id = ?", [partnerId], "ORDER BY p.updated_at DESC")).map((row) =>
+    mapRow(row, names)
+  );
+}
+
+/** A product as the shop sees it: null unless it is live. Used by product pages and checkout. */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const { DB } = await getEnv();
-  const row = await DB.prepare("SELECT * FROM products WHERE slug = ?").bind(slug).first<ProductRow>();
+  const [row] = await queryProducts(`p.slug = ? AND ${PUBLIC_FILTER}`, [slug], "LIMIT 1");
   return row ? mapRow(row, new Set(await listCategoryNames())) : null;
 }
 
+/** Any product by id, whatever its status (admin and owner checks). */
 export async function getProductById(id: string): Promise<Product | null> {
-  const { DB } = await getEnv();
-  const row = await DB.prepare("SELECT * FROM products WHERE id = ?").bind(id).first<ProductRow>();
+  const [row] = await queryProducts("p.id = ?", [id], "LIMIT 1");
   return row ? mapRow(row, new Set(await listCategoryNames())) : null;
 }
 
 export async function listRelated(category: string, excludeId: string): Promise<Product[]> {
-  const { DB } = await getEnv();
-  const { results } = await DB.prepare("SELECT * FROM products WHERE category = ? AND id <> ? ORDER BY sort_order ASC LIMIT 3"
-  )
-    .bind(category, excludeId)
-    .all<ProductRow>();
+  const rows = await queryProducts(`p.category = ? AND p.id <> ? AND ${PUBLIC_FILTER}`, [category, excludeId], "ORDER BY p.sort_order ASC LIMIT 3");
   const names = new Set(await listCategoryNames());
-  return results.map((row) => mapRow(row, names));
+  return rows.map((row) => mapRow(row, names));
 }
 
 function slugify(input: string): string {
@@ -181,7 +238,21 @@ function parseModelUrl(value: unknown): string | null {
 }
 
 /** Validates untrusted JSON from the admin form. */
-export async function parseProductInput(raw: unknown): Promise<{ ok: true; value: ProductInput } | { ok: false; error: string }> {
+/** Where a partner's uploads live; partners may only use photos and models from here. */
+export function partnerMediaPrefix(partnerId: string): string {
+  return `${MEDIA_PREFIX}partners/${partnerId}/`;
+}
+
+/**
+ * Validates untrusted JSON from the admin form, or from a partner's dashboard when `mediaPrefix`
+ * is given: then every photo and 3D model must be one of that partner's own uploads, so a partner
+ * can never show, or later delete, someone else's files.
+ */
+export async function parseProductInput(
+  raw: unknown,
+  options: { mediaPrefix?: string } = {}
+): Promise<{ ok: true; value: ProductInput } | { ok: false; error: string }> {
+  const own = (path: string | null) => !options.mediaPrefix || (path !== null && path.startsWith(options.mediaPrefix));
   if (!raw || typeof raw !== "object") return { ok: false, error: "Invalid request body." };
   const body = raw as Record<string, unknown>;
 
@@ -208,6 +279,7 @@ export async function parseProductInput(raw: unknown): Promise<{ ok: true; value
 
   const image = parseImagePath(body.image);
   if (!image) return { ok: false, error: "Upload an image or choose an existing one." };
+  if (!own(image)) return { ok: false, error: "Upload your own product photo." };
 
   const rawGallery = Array.isArray(body.gallery) ? body.gallery : [];
   const gallery = rawGallery
@@ -216,6 +288,8 @@ export async function parseProductInput(raw: unknown): Promise<{ ok: true; value
     .filter((p, i, all) => all.indexOf(p) === i);
   if (gallery.length > MAX_GALLERY)
     return { ok: false, error: `Keep the extra photos to ${MAX_GALLERY} or fewer.` };
+  if (rawGallery.some((g) => typeof g === "string" && g.trim() && !own(parseImagePath(g))))
+    return { ok: false, error: "Use only photos you uploaded." };
 
   // Blank means the price is shown as "Ask for price" rather than as free.
   const rawPrice = body.price;
@@ -247,6 +321,7 @@ export async function parseProductInput(raw: unknown): Promise<{ ok: true; value
   const model3dUrl = parseModelUrl(body.model3dUrl);
   if (typeof body.model3dUrl === "string" && body.model3dUrl.trim() && !model3dUrl)
     return { ok: false, error: "The 3D model must be an uploaded file or an https:// link." };
+  if (model3dUrl && !own(model3dUrl)) return { ok: false, error: "Upload your own 3D model file." };
 
   const rawColors = Array.isArray(body.colors) ? body.colors : [];
   const colors = rawColors
@@ -275,7 +350,10 @@ export async function parseProductInput(raw: unknown): Promise<{ ok: true; value
   };
 }
 
-export async function createProduct(input: ProductInput): Promise<Product> {
+export async function createProduct(
+  input: ProductInput,
+  owner: { partnerId: string | null; status: ProductStatus } = { partnerId: null, status: "live" }
+): Promise<Product> {
   const { DB } = await getEnv();
   const id = crypto.randomUUID();
   const slug = await uniqueSlug(input.name);
@@ -283,8 +361,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
   const sortOrder = (row?.max ?? 0) + 1;
 
   await DB.prepare(
-    `INSERT INTO products (id, slug, name, category, description, features, image, gallery, model_3d_url, colors, price_pesewas, stock_status, image_alt, fits, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO products (id, slug, name, category, description, features, image, gallery, model_3d_url, colors, price_pesewas, stock_status, image_alt, fits, sort_order, partner_id, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -301,7 +379,9 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       input.stockStatus,
       input.imageAlt,
       JSON.stringify(input.fits),
-      sortOrder
+      sortOrder,
+      owner.partnerId,
+      owner.status
     )
     .run();
 
@@ -310,7 +390,11 @@ export async function createProduct(input: ProductInput): Promise<Product> {
   return created;
 }
 
-export async function updateProduct(id: string, input: ProductInput): Promise<Product | null> {
+/**
+ * Saves edits. `status` (partner edits) also moves the product to live or back to pending review;
+ * admin edits leave the status alone.
+ */
+export async function updateProduct(id: string, input: ProductInput, status?: ProductStatus): Promise<Product | null> {
   const { DB } = await getEnv();
   const existing = await getProductById(id);
   if (!existing) return null;
@@ -336,22 +420,44 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
       id
     )
     .run();
-
+  if (status) await setProductStatus(id, status, null);
   return getProductById(id);
+}
+
+/** Moves a product between live, pending, rejected and hidden, with an optional note for the seller. */
+export async function setProductStatus(id: string, status: ProductStatus, note: string | null): Promise<boolean> {
+  const { DB } = await getEnv();
+  const res = await DB.prepare("UPDATE products SET status = ?, review_note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .bind(status, note, id)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
 }
 
 /** Turns a stored image path into an R2 object key, when it is one of ours. */
 function mediaKey(path: string): string | null {
   if (!path.startsWith(MEDIA_PREFIX)) return null;
   const key = decodeURIComponent(path.slice(MEDIA_PREFIX.length));
-  return key.startsWith("products/") ? key : null;
+  return (key.startsWith("products/") || key.startsWith("partners/")) && !key.includes("..") ? key : null;
 }
 
-/** Best-effort removal: a leftover object must never fail a catalogue write. */
+/**
+ * Best-effort removal of uploaded files no product uses any more. A file still referenced by any
+ * product (as main photo, in a gallery or as a 3D model) is kept. A leftover object must never
+ * fail a catalogue write.
+ */
 async function removeMedia(paths: string[]): Promise<void> {
-  const keys = paths.map(mediaKey).filter((k): k is string => Boolean(k));
+  const { MEDIA, DB } = await getEnv();
+  const candidates = [...new Set(paths)].filter((p) => mediaKey(p));
+  const keys: string[] = [];
+  for (const path of candidates) {
+    const used = await DB.prepare(
+      "SELECT 1 AS x FROM products WHERE image = ? OR model_3d_url = ? OR instr(gallery, ?) > 0 LIMIT 1"
+    )
+      .bind(path, path, JSON.stringify(path))
+      .first();
+    if (!used) keys.push(mediaKey(path)!);
+  }
   if (keys.length === 0) return;
-  const { MEDIA } = await getEnv();
   await Promise.all(
     keys.map(async (key) => {
       try {

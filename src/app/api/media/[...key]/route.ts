@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ key: string[] }> }) {
   const key = (await params).key.join("/");
-  if (!key.startsWith("products/") || key.includes("..")) {
+  if (!(key.startsWith("products/") || key.startsWith("partners/")) || key.includes("..")) {
     return new Response("Not found", { status: 404 });
   }
 

@@ -32,6 +32,13 @@ import type { OrderSummary } from "@/lib/orders";
 import OrdersPanel from "@/components/admin/OrdersPanel";
 import WholesaleEditor from "@/components/admin/WholesaleEditor";
 import QuoteDialog from "@/components/admin/QuoteDialog";
+import ApprovalsPanel from "@/components/admin/ApprovalsPanel";
+import ActivityPanel from "@/components/admin/ActivityPanel";
+import PartnersPanel from "@/components/admin/PartnersPanel";
+import type { CategoryRequest } from "@/lib/marketplace";
+import type { ActivityEntry } from "@/lib/activity";
+import type { PartnerSummary } from "@/lib/partner-orders";
+import { CheckSquare, History, Store } from "lucide-react";
 import type { CategoryNode } from "@/lib/categories";
 import { site } from "@/data/site";
 import { formatPrice } from "@/lib/catalogue";
@@ -58,6 +65,9 @@ type Props = {
   initialUsers: UserSummary[];
   initialWholesale: Record<string, WholesalePrice>;
   initialInvitations: Invitation[];
+  initialCategoryRequests: CategoryRequest[];
+  initialPartners: PartnerSummary[];
+  initialActivity: ActivityEntry[];
   currentUser: { id: string; email: string; role: Role };
 };
 
@@ -72,18 +82,23 @@ export default function PayloadAdminApp({
   initialUsers,
   initialWholesale,
   initialInvitations,
+  initialCategoryRequests,
+  initialPartners,
+  initialActivity,
   currentUser,
 }: Props) {
   const router = useRouter();
   const [categories, setCategories] = useState<CategoryNode[]>(initialCategories);
   const categoryNames = categories.map((c) => c.name);
   const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
+  const [categoryRequests, setCategoryRequests] = useState<CategoryRequest[]>(initialCategoryRequests);
+  const [activityPartner, setActivityPartner] = useState("");
   const [quoteFor, setQuoteFor] = useState<Enquiry | null>(null);
   const [inviteDraft, setInviteDraft] = useState<InviteDraft | null>(null);
   const [devInviteLink, setDevInviteLink] = useState<string | null>(null);
   const [wholesale, setWholesale] = useState<Record<string, WholesalePrice>>(initialWholesale);
   const [tab, setTab] = useState<string>(
-    ["dashboard", "products", "categories", "content", "enquiries", "orders", "users", "wholesale", "media"].includes(initialSegment)
+    ["dashboard", "products", "approvals", "partners", "activity", "categories", "content", "enquiries", "orders", "users", "wholesale", "media"].includes(initialSegment)
       ? initialSegment
       : "dashboard"
   );
@@ -175,6 +190,8 @@ export default function PayloadAdminApp({
   const newEnquiriesCount = enquiries.filter((e) => e.status === "new").length;
   const partnerCount = initialUsers.filter((u) => u.role === "partner").length;
   const newOrdersCount = initialOrders.filter((o) => o.fulfilmentStatus === "new").length;
+  const approvalsCount =
+    products.filter((p) => p.status === "pending").length + categoryRequests.filter((r) => r.status === "pending").length;
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -214,6 +231,9 @@ export default function PayloadAdminApp({
             { id: "orders", label: "Orders", icon: ShoppingBag, badge: newOrdersCount ? `${newOrdersCount} new` : null },
             { id: "users", label: "Users & Partners", icon: UserCheck, badge: partnerCount ? `${partnerCount} partners` : null },
             { id: "wholesale", label: "Wholesale", icon: Tag, badge: Object.keys(wholesale).length ? `${Object.keys(wholesale).length} listed` : null },
+            { id: "approvals", label: "Approvals", icon: CheckSquare, badge: approvalsCount ? `${approvalsCount} waiting` : null },
+            { id: "partners", label: "Partner shops", icon: Store, badge: initialPartners.length ? String(initialPartners.length) : null },
+            { id: "activity", label: "Activity", icon: History, badge: null },
             { id: "media", label: "Media & 3D Assets", icon: FileBox, badge: models3dCount ? `${models3dCount} 3D` : null },
           ].map((item) => {
             const Icon = item.icon;
@@ -468,7 +488,16 @@ export default function PayloadAdminApp({
                             </div>
                             <div>
                               <p className="font-bold text-navy">{p.name}</p>
-                              <p className="text-[11px] text-navy/50">{p.slug}</p>
+                              <p className="text-[11px] text-navy/50">
+                                {p.partnerName ? (
+                                  <span className="font-bold text-amber-700">Sold by {p.partnerName}</span>
+                                ) : (
+                                  "NOBYST"
+                                )}
+                                {p.status !== "live" && (
+                                  <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 font-bold uppercase text-slate-600">{p.status}</span>
+                                )}
+                              </p>
                             </div>
                           </div>
                         </td>
@@ -616,6 +645,39 @@ export default function PayloadAdminApp({
         {/* TAB 4: ENQUIRIES COLLECTION */}
         {tab === "orders" && (
           <OrdersPanel initialOrders={initialOrders} initialUnconfirmed={initialUnconfirmed} onNotify={notify} />
+        )}
+
+        {tab === "approvals" && (
+          <ApprovalsPanel
+            products={products}
+            requests={categoryRequests}
+            onProductReviewed={(updated) => setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))}
+            onRequestDecided={(decided) => {
+              setCategoryRequests((prev) => prev.map((r) => (r.id === decided.id ? decided : r)));
+              router.refresh();
+            }}
+            onNotify={notify}
+          />
+        )}
+
+        {tab === "partners" && (
+          <PartnersPanel
+            initialPartners={initialPartners}
+            onShowActivity={(id) => {
+              setActivityPartner(id);
+              setTab("activity");
+            }}
+            onNotify={notify}
+          />
+        )}
+
+        {tab === "activity" && (
+          <ActivityPanel
+            key={activityPartner}
+            entries={initialActivity}
+            partners={initialPartners.map((p) => ({ id: p.id, label: p.company ?? p.email }))}
+            initialPartner={activityPartner}
+          />
         )}
 
         {tab === "wholesale" && (

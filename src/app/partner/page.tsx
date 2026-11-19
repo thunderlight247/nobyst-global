@@ -11,10 +11,25 @@ import { fulfilmentLabel } from "@/lib/delivery";
 import { listPartnerCatalogue } from "@/lib/wholesale";
 import { formatPrice } from "@/lib/catalogue";
 import PartnerRequestForm from "@/components/PartnerRequestForm";
+import PartnerDashboard from "@/components/partner/PartnerDashboard";
+import { listPartnerProducts } from "@/lib/products";
+import { listCategories } from "@/lib/categories";
+import { listCategoryRequests } from "@/lib/marketplace";
+import { listPartnerOrderItems, listPayouts, partnerEarnings, type Earnings } from "@/lib/partner-orders";
+import { getEnv } from "@/lib/cloudflare";
+
+const EMPTY_EARNINGS: Earnings = {
+  grossPesewas: 0,
+  commissionPesewas: 0,
+  earnedPesewas: 0,
+  pendingPesewas: 0,
+  paidOutPesewas: 0,
+  owedPesewas: 0,
+};
 import { SignOutButton } from "@/components/AccountPanel";
 
 export const metadata: Metadata = {
-  title: "Partner portal",
+  title: "Partner dashboard",
   robots: { index: false, follow: false },
 };
 
@@ -83,31 +98,22 @@ export default async function PartnerPortal() {
     preview || !trusted ? Promise.resolve([]) : listOpenQuotesForUser(user.id).catch(() => []),
   ]);
   const twoFactor = await getTwoFactorStatus(user.id).catch(() => ({ enabled: false, recoveryCodesLeft: 0 }));
+  const [myProducts, categories, categoryRequests, orderItems, earnings, payouts] = await Promise.all([
+    preview ? Promise.resolve([]) : listPartnerProducts(user.id).catch(() => []),
+    listCategories().catch(() => []),
+    preview ? Promise.resolve([]) : listCategoryRequests(user.id),
+    preview ? Promise.resolve([]) : listPartnerOrderItems(user.id),
+    preview ? Promise.resolve(EMPTY_EARNINGS) : partnerEarnings(user.id),
+    preview ? Promise.resolve([]) : listPayouts(user.id),
+  ]);
+  const { DB } = await getEnv();
+  const account = await DB.prepare("SELECT * FROM users WHERE id = ?")
+    .bind(user.id)
+    .first<{ payout_details?: string | null; commission_bps?: number | null }>()
+    .catch(() => null);
 
-  return (
-    <section className="mx-auto max-w-6xl px-5 py-10 sm:px-6 sm:py-16 lg:px-8">
-      {preview && (
-        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Admin preview: this is what partners see. Request history is per partner, so none is shown here.{" "}
-          <Link href="/admin" className="font-bold underline">
-            Back to admin
-          </Link>
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <span className="inline-block rounded-full bg-gold-100 px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600 sm:text-xs">
-            Partner portal
-          </span>
-          <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">
-            {user.company ?? user.name}
-          </h1>
-          <p className="mt-1 text-sm text-navy/60">Signed in as {user.email}</p>
-        </div>
-        <SignOutButton />
-      </div>
-
+  const wholesale = trusted ? (
+    <div>
       {quotes.length > 0 && (
         <div className="mt-8 rounded-3xl border-2 border-gold bg-gold-100/50 p-5 sm:p-6">
           <h2 className="font-display text-xl font-bold text-navy">Quotes ready to pay</h2>
@@ -137,13 +143,6 @@ export default async function PartnerPortal() {
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {!trusted && (
-        <div className="mt-8 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
-          <strong>Your partner account is being reviewed.</strong> Our team checks each new partner before
-          their products go live. Wholesale prices and bulk quotes appear here once your account is approved.
         </div>
       )}
 
@@ -253,10 +252,15 @@ export default async function PartnerPortal() {
           </div>
         </div>
       )}
+    </div>
+  ) : null;
+
+  const security = (
+    <div className="space-y-6">
       {!preview && (
-        <div className="mt-8 rounded-3xl border border-navy/10 bg-white p-5 shadow-sm sm:p-6">
+        <div className="rounded-3xl border border-navy/10 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="font-display text-xl font-bold text-navy">Two-step sign-in</h2>
-          <p className="mb-4 mt-1 text-xs text-navy/60">Optional, recommended: protects your wholesale account if your password leaks.</p>
+          <p className="mb-4 mt-1 text-xs text-navy/60">Optional, recommended: protects your shop and earnings if your password leaks.</p>
           <TwoFactorSettings
             enabled={twoFactor.enabled}
             recoveryCodesLeft={twoFactor.recoveryCodesLeft}
@@ -265,6 +269,23 @@ export default async function PartnerPortal() {
           />
         </div>
       )}
-    </section>
+      <SignOutButton />
+    </div>
+  );
+
+  return (
+    <PartnerDashboard
+      partner={{ name: user.name, company: user.company, email: user.email, status: user.partnerStatus, preview }}
+      initialProducts={myProducts}
+      categories={categories}
+      initialCategoryRequests={categoryRequests}
+      initialOrderItems={orderItems}
+      earnings={earnings}
+      payouts={payouts}
+      payoutDetails={account?.payout_details ?? null}
+      commissionBps={account?.commission_bps ?? 1000}
+      wholesale={wholesale}
+      security={security}
+    />
   );
 }

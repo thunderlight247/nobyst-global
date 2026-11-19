@@ -8,6 +8,8 @@ import {
   updateProduct,
 } from "@/lib/products";
 import { parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
+import { getCurrentUser } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +43,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (raw && typeof raw === "object" && "wholesalePrice" in raw) {
       await saveWholesalePrice(product.id, wholesale.value);
     }
+    if (previous.partnerId) {
+      const admin = await getCurrentUser();
+      await logActivity({
+        actor: admin ? { id: admin.id, email: admin.email, role: admin.role } : null,
+        partnerId: previous.partnerId,
+        action: "product.admin_edit",
+        entityId: id,
+        summary: `${admin?.email ?? "An admin"} edited “${product.name}” from ${previous.partnerName}`,
+      });
+    }
     return NextResponse.json({ product });
   } catch (error) {
     console.error("Could not update product", error);
@@ -53,8 +65,19 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const denied = await requireAdmin();
   if (denied) return denied;
   try {
+    const existing = await getProductById(id);
     const deleted = await deleteProduct(id);
     if (!deleted) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+    if (existing?.partnerId) {
+      const admin = await getCurrentUser();
+      await logActivity({
+        actor: admin ? { id: admin.id, email: admin.email, role: admin.role } : null,
+        partnerId: existing.partnerId,
+        action: "product.admin_delete",
+        entityId: id,
+        summary: `${admin?.email ?? "An admin"} deleted “${existing.name}” from ${existing.partnerName}`,
+      });
+    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Could not delete product", error);

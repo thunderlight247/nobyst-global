@@ -50,7 +50,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     description: product.description,
     image: new URL(product.image, site.url).toString(),
     category: product.category,
-    brand: { "@type": "Brand", name: site.name },
+    brand: { "@type": "Brand", name: product.partnerName ?? site.name },
     url: `${site.url}/products/${product.slug}`,
     ...(price
       ? {
@@ -100,6 +100,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <h1 className="mt-3 font-display text-2xl font-extrabold tracking-tight text-navy sm:mt-4 sm:text-4xl">
             {product.name}
           </h1>
+          <p className="mt-1.5 text-sm text-navy/60">
+            Sold by <strong className="text-navy">{product.partnerName ?? site.name}</strong>
+            {product.partnerName && " · paid securely through NOBYST GLOBAL"}
+          </p>
           <div className="mt-3 flex flex-wrap items-center gap-2.5">
             {price ? (
               <p className="font-display text-xl font-extrabold text-navy sm:text-2xl">{price}</p>

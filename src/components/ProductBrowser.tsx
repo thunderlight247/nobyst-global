@@ -260,6 +260,9 @@ export default function ProductBrowser({
                     {p.name}
                   </Link>
                 </h3>
+                {p.partnerName && (
+                  <p className="mt-1 text-[11px] font-semibold text-navy/55">Sold by {p.partnerName}</p>
+                )}
                 <p className="mt-1.5 line-clamp-2 flex-1 text-xs leading-relaxed text-navy/65 sm:mt-2 sm:text-sm">
                   {p.description}
                 </p>

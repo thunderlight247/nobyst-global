@@ -10,13 +10,25 @@ import type { WholesalePrice } from "@/lib/wholesale";
 type Props = {
   product: Product | null;
   categories: string[];
+  /** "/api/admin" (default) or "/api/partner": where photos upload and the product saves. */
+  apiBase?: "/api/admin" | "/api/partner";
+  /** Partner wholesale prices are admin-only. */
+  showWholesale?: boolean;
   /** The product's current wholesale price, shown only to admins. */
   wholesale?: WholesalePrice | null;
   onSaved: (product: Product, wholesale: WholesalePrice | null) => void;
   onClose: () => void;
 };
 
-export default function ProductForm({ product, categories, wholesale = null, onSaved, onClose }: Props) {
+export default function ProductForm({
+  product,
+  categories,
+  wholesale = null,
+  apiBase = "/api/admin",
+  showWholesale = true,
+  onSaved,
+  onClose,
+}: Props) {
   const [name, setName] = useState(product?.name ?? "");
   const [category, setCategory] = useState<string>(product?.category ?? categories[0] ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
@@ -69,7 +81,7 @@ export default function ProductForm({ product, categories, wholesale = null, onS
       for (const file of files) {
         const form = new FormData();
         form.append("file", file);
-        const res = await fetch("/api/admin/media", { method: "POST", body: form });
+        const res = await fetch(`${apiBase}/media`, { method: "POST", body: form });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? "An image could not be uploaded.");
         if (!hero) hero = data.url as string;
@@ -123,13 +135,12 @@ export default function ProductForm({ product, categories, wholesale = null, onS
           .map((c) => c.trim())
           .filter(Boolean),
         price: price.trim(),
-        wholesalePrice: wholesalePrice.trim(),
-        wholesaleMinQty: wholesaleMinQty.trim(),
+        ...(showWholesale ? { wholesalePrice: wholesalePrice.trim(), wholesaleMinQty: wholesaleMinQty.trim() } : {}),
         stockStatus,
         imageAlt,
         fits,
       };
-      const res = await fetch(product ? `/api/admin/products/${product.id}` : "/api/admin/products", {
+      const res = await fetch(product ? `${apiBase}/products/${product.id}` : `${apiBase}/products`, {
         method: product ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -256,6 +267,7 @@ export default function ProductForm({ product, categories, wholesale = null, onS
             </div>
           </div>
 
+          {showWholesale && (
           <fieldset className="grid gap-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4 sm:grid-cols-2">
             <legend className="px-1 text-xs font-bold text-amber-800">Partner wholesale (private)</legend>
             <div>
@@ -295,6 +307,7 @@ export default function ProductForm({ product, categories, wholesale = null, onS
               />
             </div>
           </fieldset>
+          )}
 
           <div>
             <label htmlFor="p-description" className="mb-1.5 block text-xs font-bold text-navy">

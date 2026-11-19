@@ -25,9 +25,9 @@ They manage their own shop from a partner dashboard; admins see and can undo eve
 ## Steps
 
 1. Show/hide password fields; automatic invitation from the application form with a professional message; partner status (pending, trusted, suspended). **Done.**
-2. Marketplace core: migration, partner product and photo management, approval rules, public catalogue shows only live products with "Sold by", checkout records partner items.
-3. Admin monitoring: activity feed, approvals (products, category requests, partners), partner status and commission, payouts.
-4. Partner orders and earnings: item fulfilment by the partner, earnings and payout history, payout details.
+2. Marketplace core: migration, partner product and photo management, approval rules, public catalogue shows only live products with "Sold by", checkout records partner items. **Done.**
+3. Admin monitoring: activity feed, approvals (products, category requests, partners), partner status and commission, payouts. **Done.**
+4. Partner orders and earnings: item fulfilment by the partner, earnings and payout history, payout details. **Done.**
 
 ## Safety rules
 
