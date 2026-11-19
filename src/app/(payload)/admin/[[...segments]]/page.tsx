@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 export default async function PayloadAdminPage({
   params,
 }: {
-  params: { segments?: string[] };
+  params: Promise<{ segments?: string[] }>;
 }) {
   // Admins only. Guests are sent to sign in; signed-in non-admins see who they are signed in as
   // and how to get access, but no admin data. The API routes enforce the same check independently.
@@ -60,7 +60,7 @@ export default async function PayloadAdminPage({
     listInvitations(),
   ]);
 
-  const activeCollection = params.segments?.[0] || "dashboard";
+  const activeCollection = (await params).segments?.[0] || "dashboard";
 
   return (
     <main className="min-h-screen bg-slate-50 text-navy antialiased">

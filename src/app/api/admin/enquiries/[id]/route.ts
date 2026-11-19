@@ -4,7 +4,8 @@ import { deleteEnquiry, updateEnquiryStatus, type EnquiryStatus } from "@/lib/en
 
 export const dynamic = "force-dynamic";
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const denied = await requireAdmin();
   if (denied) return denied;
   try {
@@ -13,16 +14,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (!["new", "contacted", "closed"].includes(status)) {
       return NextResponse.json({ error: "Invalid status." }, { status: 400 });
     }
-    const ok = await updateEnquiryStatus(params.id, status);
+    const ok = await updateEnquiryStatus(id, status);
     return NextResponse.json({ ok });
   } catch (err) {
     return NextResponse.json({ error: "Update failed." }, { status: 500 });
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const denied = await requireAdmin();
   if (denied) return denied;
-  const ok = await deleteEnquiry(params.id);
+  const ok = await deleteEnquiry(id);
   return NextResponse.json({ ok });
 }

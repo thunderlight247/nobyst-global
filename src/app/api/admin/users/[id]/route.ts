@@ -4,7 +4,8 @@ import { isRole, requireRole, updateUserAccess } from "@/lib/auth";
 // Admin only: every handler checks the signed-in user's role before doing anything.
 export const dynamic = "force-dynamic";
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const auth = await requireRole("admin");
   if ("denied" in auth) return auth.denied;
 
@@ -13,7 +14,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   if (!isRole(body.role)) return NextResponse.json({ error: "Choose a valid role." }, { status: 400 });
   // An admin cannot change their own role, so the last admin can never lock everyone out.
-  if (params.id === auth.user.id && body.role !== auth.user.role) {
+  if (id === auth.user.id && body.role !== auth.user.role) {
     return NextResponse.json(
       { error: "You cannot change your own role. Ask another admin." },
       { status: 400 }
@@ -26,7 +27,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   try {
-    const user = await updateUserAccess(params.id, body.role, company);
+    const user = await updateUserAccess(id, body.role, company);
     if (!user) return NextResponse.json({ error: "Account not found." }, { status: 404 });
     return NextResponse.json({ user });
   } catch (error) {

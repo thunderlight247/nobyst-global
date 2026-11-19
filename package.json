@@ -11,31 +11,40 @@
     "typecheck": "tsc --noEmit",
     "db:init": "wrangler d1 execute nobyst-catalog --local --file=./db/schema.sql",
     "db:seed": "wrangler d1 execute nobyst-catalog --local --file=./db/seed.sql",
-    "deploy": "NODE_OPTIONS=\"--max-old-space-size=1536\" opennextjs-cloudflare build && NODE_OPTIONS=\"--max-old-space-size=1536 --dns-result-order=ipv4first --no-network-family-autoselection\" npx wrangler deploy"
+    "deploy": "NODE_OPTIONS=\"--max-old-space-size=1536\" opennextjs-cloudflare build && NODE_OPTIONS=\"--max-old-space-size=1536 --dns-result-order=ipv4first --no-network-family-autoselection\" npx wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "NODE_OPTIONS=\"--max-old-space-size=1536\" opennextjs-cloudflare build && NODE_OPTIONS=\"--dns-result-order=ipv4first --no-network-family-autoselection\" npx wrangler versions upload",
+    "check": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
-    "@opennextjs/cloudflare": "^1.14.6",
-    "@react-three/fiber": "^8.18.0",
+    "@opennextjs/cloudflare": "^1.20.17",
+    "@react-three/fiber": "^9.8.2",
     "framer-motion": "^12.43.0",
     "gsap": "^3.12.5",
     "lenis": "^1.1.13",
     "lucide-react": "^0.439.0",
-    "next": "^14.2.35",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "next": "^15.5.29",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "three": "^0.169.0",
     "zustand": "^5.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "@types/three": "^0.169.0",
     "eslint": "^8",
-    "eslint-config-next": "^14.2.35",
+    "eslint-config-next": "^15.5.29",
     "postcss": "^8",
     "tailwindcss": "^3.4.10",
     "typescript": "^5",
+    "vitest": "^3.2.7",
     "wrangler": "^4.158.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261117.1": true
   }
 }

@@ -11,7 +11,8 @@ import { parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
 
 export const dynamic = "force-dynamic";
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const denied = await requireAdmin();
   if (denied) return denied;
   try {
@@ -26,10 +27,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const wholesale = parseWholesaleInput(raw);
     if (!wholesale.ok) return NextResponse.json({ error: wholesale.error }, { status: 400 });
 
-    const previous = await getProductById(params.id);
+    const previous = await getProductById(id);
     if (!previous) return NextResponse.json({ error: "Product not found." }, { status: 404 });
 
-    const product = await updateProduct(params.id, parsed.value);
+    const product = await updateProduct(id, parsed.value);
     if (!product) return NextResponse.json({ error: "Product not found." }, { status: 404 });
 
     await deleteUnusedMedia(
@@ -47,11 +48,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const denied = await requireAdmin();
   if (denied) return denied;
   try {
-    const deleted = await deleteProduct(params.id);
+    const deleted = await deleteProduct(id);
     if (!deleted) return NextResponse.json({ error: "Product not found." }, { status: 404 });
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -2,8 +2,8 @@ import { getEnv } from "@/lib/cloudflare";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: { key: string[] } }) {
-  const key = params.key.join("/");
+export async function GET(_request: Request, { params }: { params: Promise<{ key: string[] }> }) {
+  const key = (await params).key.join("/");
   if (!key.startsWith("products/") || key.includes("..")) {
     return new Response("Not found", { status: 404 });
   }
