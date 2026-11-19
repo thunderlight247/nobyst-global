@@ -90,6 +90,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           pricePesewas={product.pricePesewas}
           model3dUrl={product.model3dUrl}
           colors={product.colors}
+          outOfStock={product.stockStatus === "out_of_stock"}
         />
 
         <div>

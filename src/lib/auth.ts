@@ -4,6 +4,8 @@ import { getEnv } from "./cloudflare";
 
 export const SESSION_COOKIE = "nobyst_session";
 const SESSION_DAYS = 30;
+/** Admin sessions are short: a stolen or forgotten admin sign-in stops working within hours. */
+const ADMIN_SESSION_HOURS = 12;
 const RESET_MINUTES = 60;
 const PBKDF2_ITERATIONS = 100_000;
 
@@ -107,7 +109,9 @@ export async function createSession(userId: string): Promise<string> {
   const { DB } = await getEnv();
   const token = randomToken();
   const now = new Date();
-  const expires = new Date(now.getTime() + SESSION_DAYS * 86_400_000).toISOString();
+  const role = await DB.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first<{ role?: unknown }>();
+  const lifetimeMs = role?.role === "admin" ? ADMIN_SESSION_HOURS * 3_600_000 : SESSION_DAYS * 86_400_000;
+  const expires = new Date(now.getTime() + lifetimeMs).toISOString();
   // Drop this user's expired sessions so old rows do not pile up.
   await DB.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?")
     .bind(userId, now.toISOString())
@@ -130,13 +134,24 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const { DB } = await getEnv();
   // u.* rather than named columns: role (0008) and company (0009) arrive with migrations, and a
   // database without them simply yields customers, so admin and partner areas stay locked.
+  const tokenHash = await sha256Hex(token);
+  const now = Date.now();
   const row = await DB.prepare(
-    `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+    `SELECT u.*, s.expires_at AS session_expires_at FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.expires_at > ?`
   )
-    .bind(await sha256Hex(token), new Date().toISOString())
-    .first<{ id: string; email: string; name: string; role?: unknown; company?: string | null }>();
+    .bind(tokenHash, new Date(now).toISOString())
+    .first<{ id: string; email: string; name: string; role?: unknown; company?: string | null; session_expires_at: string }>();
   if (!row) return null;
+
+  // A session that began before the account became an admin still has a customer's 30-day life.
+  // Cap it, so every admin session ends at most ADMIN_SESSION_HOURS from now.
+  const adminCap = now + ADMIN_SESSION_HOURS * 3_600_000;
+  if (row.role === "admin" && Date.parse(row.session_expires_at) > adminCap) {
+    await DB.prepare("UPDATE sessions SET expires_at = ? WHERE token_hash = ?")
+      .bind(new Date(adminCap).toISOString(), tokenHash)
+      .run();
+  }
   return {
     id: row.id,
     email: row.email,

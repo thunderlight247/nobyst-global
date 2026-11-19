@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { Handshake } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { listEnquiriesForUser } from "@/lib/enquiries";
-import { listOrdersForUser } from "@/lib/orders";
+import { listOpenQuotesForUser, listOrdersForUser } from "@/lib/orders";
+import { fulfilmentLabel } from "@/lib/delivery";
 import { listPartnerCatalogue } from "@/lib/wholesale";
 import { formatPrice } from "@/lib/catalogue";
 import PartnerRequestForm from "@/components/PartnerRequestForm";
@@ -55,10 +56,11 @@ export default async function PartnerPortal() {
   }
 
   const preview = user.role === "admin";
-  const [catalogue, requests, orders] = await Promise.all([
+  const [catalogue, requests, orders, quotes] = await Promise.all([
     listPartnerCatalogue(),
     preview ? Promise.resolve([]) : listEnquiriesForUser(user.id).catch(() => []),
     preview ? Promise.resolve([]) : listOrdersForUser(user.id).catch(() => []),
+    preview ? Promise.resolve([]) : listOpenQuotesForUser(user.id).catch(() => []),
   ]);
 
   return (
@@ -84,6 +86,38 @@ export default async function PartnerPortal() {
         </div>
         <SignOutButton />
       </div>
+
+      {quotes.length > 0 && (
+        <div className="mt-8 rounded-3xl border-2 border-gold bg-gold-100/50 p-5 sm:p-6">
+          <h2 className="font-display text-xl font-bold text-navy">Quotes ready to pay</h2>
+          <ul className="mt-3 divide-y divide-navy/10">
+            {quotes.map((q) => (
+              <li key={q.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                <div>
+                  <p className="font-bold text-navy">
+                    {q.items.map((i) => `${i.quantity} × ${i.productName}`).join(", ")}
+                  </p>
+                  <p className="text-xs text-navy/60">
+                    {q.reference}
+                    {q.delivery.notes ? ` · ${q.delivery.notes}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-extrabold text-navy">{formatPrice(q.totalPesewas)}</span>
+                  {q.paymentUrl && (
+                    <a
+                      href={q.paymentUrl}
+                      className="inline-flex min-h-[44px] items-center rounded-full bg-navy px-5 py-2 text-sm font-bold text-white hover:bg-royal"
+                    >
+                      Pay now
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-start">
         <div className="rounded-3xl border border-navy/10 bg-white p-5 shadow-sm sm:p-6">
@@ -171,9 +205,14 @@ export default async function PartnerPortal() {
             ) : (
               <ul className="mt-4 divide-y divide-navy/5">
                 {orders.map((o) => (
-                  <li key={o.id} className="flex justify-between gap-3 py-3 text-sm">
+                  <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                     <span className="font-bold text-navy">{o.reference}</span>
-                    <span className="text-navy/70">{formatPrice(o.totalPesewas)}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="rounded-full bg-navy/5 px-2.5 py-0.5 text-[11px] font-bold text-navy">
+                        {fulfilmentLabel(o.fulfilmentStatus)}
+                      </span>
+                      <span className="text-navy/70">{formatPrice(o.totalPesewas)}</span>
+                    </span>
                   </li>
                 ))}
               </ul>

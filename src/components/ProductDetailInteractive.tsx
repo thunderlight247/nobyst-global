@@ -29,6 +29,7 @@ type Props = {
   pricePesewas: number | null;
   model3dUrl?: string | null;
   colors?: string[];
+  outOfStock?: boolean;
 };
 
 export default function ProductDetailInteractive({
@@ -41,6 +42,7 @@ export default function ProductDetailInteractive({
   pricePesewas,
   model3dUrl,
   colors = [],
+  outOfStock = false,
 }: Props) {
   const [view3D, setView3D] = useState(false);
   const [added, setAdded] = useState(false);
@@ -132,6 +134,33 @@ export default function ProductDetailInteractive({
 
       {/* Add to cart; checkout happens in the cart */}
       <div className="pt-2">
+        {outOfStock ? (
+          <>
+            <button
+              type="button"
+              disabled
+              className="inline-flex min-h-[50px] w-full cursor-not-allowed items-center justify-center gap-2 rounded-full bg-navy/30 px-6 py-3.5 text-sm font-bold text-white sm:text-base"
+            >
+              Out of stock
+            </button>
+            <p className="mb-4 mt-2 text-center text-xs text-navy/55">
+              <a href={`/support?product=${encodeURIComponent(productName)}`} className="font-bold text-royal underline">
+                Ask us when it is back
+              </a>
+            </p>
+          </>
+        ) : pricePesewas === null ? (
+          <>
+            <a
+              href={`/support?product=${encodeURIComponent(productName)}`}
+              className="inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-full bg-navy px-6 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-royal sm:text-base"
+            >
+              Ask for price
+            </a>
+            <p className="mb-4 mt-2 text-center text-xs text-navy/55">We reply with the price and availability.</p>
+          </>
+        ) : (
+        <>
         <button
           type="button"
           onClick={() => {
@@ -153,6 +182,8 @@ export default function ProductDetailInteractive({
         <p className="mb-4 mt-2 text-center text-xs text-navy/55" role="status" aria-live="polite">
           {added ? "Open the cart to check out." : "Pay securely with Paystack in your cart."}
         </p>
+        </>
+        )}
       </div>
     </div>
   );

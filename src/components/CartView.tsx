@@ -6,12 +6,21 @@ import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useNobystStore, type CartItem } from "@/store/useStore";
 import { formatPrice } from "@/lib/catalogue";
+import { DELIVERY_METHODS, GHANA_REGIONS, parseDelivery } from "@/lib/delivery";
 
 function lineTotal(item: CartItem): number | null {
   return item.pricePesewas === null ? null : item.pricePesewas * item.quantity;
 }
 
-export default function CartView({ signedIn }: { signedIn: boolean }) {
+export default function CartView({
+  signedIn,
+  defaultName = "",
+  defaultEmail = "",
+}: {
+  signedIn: boolean;
+  defaultName?: string;
+  defaultEmail?: string;
+}) {
   const cart = useNobystStore((s) => s.cart);
   const updateCartQuantity = useNobystStore((s) => s.updateCartQuantity);
   const removeFromCart = useNobystStore((s) => s.removeFromCart);
@@ -20,9 +29,14 @@ export default function CartView({ signedIn }: { signedIn: boolean }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(defaultName);
+  const [email, setEmail] = useState(defaultEmail);
   const [phone, setPhone] = useState("");
+  const [method, setMethod] = useState<"delivery" | "pickup">("delivery");
+  const [region, setRegion] = useState("Bono East");
+  const [town, setTown] = useState("");
+  const [address, setAddress] = useState("");
+  const [notes, setNotes] = useState("");
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +70,9 @@ export default function CartView({ signedIn }: { signedIn: boolean }) {
     if (name.trim().length < 2) return setError("Please enter your name.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("Please enter a valid email.");
     if (phone.trim().length < 7) return setError("Please enter a phone number.");
+    const delivery = { method, region, town, address, notes };
+    const checked = parseDelivery(delivery);
+    if (typeof checked === "string") return setError(checked);
 
     setPaying(true);
     try {
@@ -66,6 +83,7 @@ export default function CartView({ signedIn }: { signedIn: boolean }) {
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim(),
+          delivery,
           items: cart.map((c) => ({ slug: c.slug, color: c.color, quantity: c.quantity })),
         }),
       });
@@ -183,6 +201,68 @@ export default function CartView({ signedIn }: { signedIn: boolean }) {
             placeholder="Phone (for delivery)"
             type="tel"
             autoComplete="tel"
+            className="h-11 w-full rounded-xl border border-navy/15 px-3.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+          />
+          <fieldset className="space-y-2 pt-2">
+            <legend className="text-sm font-bold text-navy">How should we get it to you?</legend>
+            {DELIVERY_METHODS.map((m) => (
+              <label
+                key={m.id}
+                className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-sm ${
+                  method === m.id ? "border-royal bg-royal-100/40" : "border-navy/15"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="delivery-method"
+                  value={m.id}
+                  checked={method === m.id}
+                  onChange={() => setMethod(m.id)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-bold text-navy">{m.label}</span>
+                  <span className="block text-xs text-navy/60">{m.hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {method === "delivery" && (
+            <div className="space-y-3">
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                aria-label="Region"
+                className="h-11 w-full rounded-xl border border-navy/15 px-3.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20 bg-white"
+              >
+                {GHANA_REGIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r} Region
+                  </option>
+                ))}
+              </select>
+              <input
+                value={town}
+                onChange={(e) => setTown(e.target.value)}
+                placeholder="Town or city"
+                autoComplete="address-level2"
+                className="h-11 w-full rounded-xl border border-navy/15 px-3.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+              />
+              <textarea
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Street, house number or landmark (GhanaPost GPS code if you have one)"
+                autoComplete="street-address"
+                rows={2}
+                className="w-full rounded-xl border border-navy/15 px-3.5 py-2.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
+              />
+            </div>
+          )}
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Notes for us (optional)"
+            maxLength={500}
             className="h-11 w-full rounded-xl border border-navy/15 px-3.5 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20"
           />
           {error && (

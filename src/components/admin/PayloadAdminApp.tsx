@@ -28,7 +28,10 @@ import {
 } from "lucide-react";
 import type { Product } from "@/lib/products";
 import type { Enquiry, EnquiryStatus } from "@/lib/enquiries";
-import type { PaidOrder } from "@/lib/orders";
+import type { OrderSummary } from "@/lib/orders";
+import OrdersPanel from "@/components/admin/OrdersPanel";
+import WholesaleEditor from "@/components/admin/WholesaleEditor";
+import QuoteDialog from "@/components/admin/QuoteDialog";
 import type { CategoryNode } from "@/lib/categories";
 import { site } from "@/data/site";
 import { formatPrice } from "@/lib/catalogue";
@@ -45,7 +48,8 @@ import PartnerInvitations, { InviteDialog, type InviteDraft } from "@/components
 type Props = {
   initialProducts: Product[];
   initialEnquiries: Enquiry[];
-  initialOrders: PaidOrder[];
+  initialOrders: OrderSummary[];
+  initialUnconfirmed: OrderSummary[];
   initialCategories: CategoryNode[];
   initialContent: ContentValues;
   initialSegment: string;
@@ -59,6 +63,7 @@ export default function PayloadAdminApp({
   initialProducts,
   initialEnquiries,
   initialOrders,
+  initialUnconfirmed,
   initialCategories,
   initialContent,
   initialSegment,
@@ -71,11 +76,12 @@ export default function PayloadAdminApp({
   const [categories, setCategories] = useState<CategoryNode[]>(initialCategories);
   const categoryNames = categories.map((c) => c.name);
   const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
+  const [quoteFor, setQuoteFor] = useState<Enquiry | null>(null);
   const [inviteDraft, setInviteDraft] = useState<InviteDraft | null>(null);
   const [devInviteLink, setDevInviteLink] = useState<string | null>(null);
   const [wholesale, setWholesale] = useState<Record<string, WholesalePrice>>(initialWholesale);
   const [tab, setTab] = useState<string>(
-    ["dashboard", "products", "categories", "content", "enquiries", "orders", "users", "media"].includes(initialSegment)
+    ["dashboard", "products", "categories", "content", "enquiries", "orders", "users", "wholesale", "media"].includes(initialSegment)
       ? initialSegment
       : "dashboard"
   );
@@ -166,6 +172,7 @@ export default function PayloadAdminApp({
   const models3dCount = products.filter((p) => Boolean(p.model3dUrl)).length;
   const newEnquiriesCount = enquiries.filter((e) => e.status === "new").length;
   const partnerCount = initialUsers.filter((u) => u.role === "partner").length;
+  const newOrdersCount = initialOrders.filter((o) => o.fulfilmentStatus === "new").length;
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -202,8 +209,9 @@ export default function PayloadAdminApp({
             { id: "categories", label: "Categories", icon: FolderTree, badge: categories.length },
             { id: "content", label: "Page Text", icon: FileText, badge: null },
             { id: "enquiries", label: "Enquiries", icon: Inbox, badge: newEnquiriesCount ? `${newEnquiriesCount} new` : null },
-            { id: "orders", label: "Orders", icon: ShoppingBag, badge: initialOrders.length ? `${initialOrders.length} paid` : null },
+            { id: "orders", label: "Orders", icon: ShoppingBag, badge: newOrdersCount ? `${newOrdersCount} new` : null },
             { id: "users", label: "Users & Partners", icon: UserCheck, badge: partnerCount ? `${partnerCount} partners` : null },
+            { id: "wholesale", label: "Wholesale", icon: Tag, badge: Object.keys(wholesale).length ? `${Object.keys(wholesale).length} listed` : null },
             { id: "media", label: "Media & 3D Assets", icon: FileBox, badge: models3dCount ? `${models3dCount} 3D` : null },
           ].map((item) => {
             const Icon = item.icon;
@@ -602,51 +610,23 @@ export default function PayloadAdminApp({
 
         {/* TAB 4: ENQUIRIES COLLECTION */}
         {tab === "orders" && (
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-royal">Collection</span>
-            <h1 className="font-display text-2xl font-extrabold text-navy sm:text-3xl">Paid Orders</h1>
-            <p className="mt-1 text-xs text-navy/60">
-              Orders confirmed by Paystack. Pending or failed payments are not listed.
-            </p>
+          <OrdersPanel initialOrders={initialOrders} initialUnconfirmed={initialUnconfirmed} onNotify={notify} />
+        )}
 
-            <div className="mt-6 space-y-4">
-              {initialOrders.length === 0 ? (
-                <div className="rounded-2xl border border-navy/10 bg-white p-12 text-center text-xs text-navy/50">
-                  No paid orders yet.
-                </div>
-              ) : (
-                initialOrders.map((order) => (
-                  <div key={order.id} className="rounded-2xl border border-navy/10 bg-white p-5 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-navy/5 pb-3">
-                      <div>
-                        <p className="text-xs font-bold text-navy">{order.name}</p>
-                        <p className="text-[11px] text-navy/50">
-                          {order.reference} · {order.email} · {order.phone}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-extrabold text-royal">
-                          {formatPrice(order.totalPesewas)}
-                        </p>
-                        {order.paidAt && (
-                          <p className="text-[11px] text-navy/40">
-                            {new Date(order.paidAt.replace(" ", "T") + "Z").toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <ul className="mt-3 space-y-1 text-xs text-navy/70">
-                      {order.items.map((item, i) => (
-                        <li key={i}>
-                          {item.quantity} × {item.productName} ({item.color}) at {formatPrice(item.unitPesewas)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+        {tab === "wholesale" && (
+          <WholesaleEditor
+            products={products}
+            wholesale={wholesale}
+            onChange={(productId, value) =>
+              setWholesale((prev) => {
+                const next = { ...prev };
+                if (value) next[productId] = value;
+                else delete next[productId];
+                return next;
+              })
+            }
+            onNotify={notify}
+          />
         )}
 
         {tab === "users" && (
@@ -722,6 +702,15 @@ export default function PayloadAdminApp({
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {enq.userId && enq.type === "bulk_order" && (
+                          <button
+                            type="button"
+                            onClick={() => setQuoteFor(enq)}
+                            className="rounded-lg bg-navy px-2.5 py-1 text-[11px] font-bold text-white hover:bg-royal"
+                          >
+                            Send quote
+                          </button>
+                        )}
                         {enq.type === "partnership" && (
                           <button
                             type="button"
@@ -844,9 +833,32 @@ export default function PayloadAdminApp({
         )}
       </section>
 
+      {quoteFor && (
+        <QuoteDialog
+          enquiry={quoteFor}
+          suggestedUnitPesewas={(() => {
+            const product = products.find((p) => p.name === quoteFor.productName);
+            return product ? wholesale[product.id]?.pricePesewas ?? product.pricePesewas : null;
+          })()}
+          onClose={() => setQuoteFor(null)}
+          onSent={(order) => {
+            setEnquiries((prev) =>
+              prev.map((e) => (e.id === quoteFor.id && e.status === "new" ? { ...e, status: "contacted" } : e))
+            );
+            setQuoteFor(null);
+            notify(`Quote ${order.reference} sent to ${order.email}.`);
+          }}
+        />
+      )}
+
       {inviteDraft && (
         <InviteDialog
           draft={inviteDraft}
+          warning={
+            Object.keys(wholesale).length === 0
+              ? "No wholesale prices are set yet, so this partner's price list will be empty. Add some in the Wholesale tab."
+              : undefined
+          }
           onClose={() => setInviteDraft(null)}
           onSent={(invitation, devLink) => {
             setInvitations((prev) => [

@@ -19,10 +19,12 @@ const field =
 /** Modal that emails a single-use partner portal invitation. */
 export function InviteDialog({
   draft,
+  warning,
   onClose,
   onSent,
 }: {
   draft: InviteDraft;
+  warning?: string;
   onClose: () => void;
   onSent: (invitation: Invitation, devLink?: string) => void;
 }) {
@@ -70,6 +72,9 @@ export function InviteDialog({
             <X size={18} />
           </button>
         </div>
+        {warning && (
+          <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">{warning}</p>
+        )}
         <div className="mt-5 space-y-3">
           <label className="block text-xs font-bold text-navy">
             Email

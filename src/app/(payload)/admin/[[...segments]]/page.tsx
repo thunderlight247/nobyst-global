@@ -7,7 +7,7 @@ import { listWholesalePrices } from "@/lib/wholesale";
 import { listInvitations } from "@/lib/invitations";
 import { listProducts } from "@/lib/products";
 import { listEnquiries } from "@/lib/enquiries";
-import { listPaidOrders } from "@/lib/orders";
+import { listPaidOrders, listUnconfirmedOrders } from "@/lib/orders";
 import { listCategories } from "@/lib/categories";
 import { getContent } from "@/lib/content";
 import PayloadAdminApp from "@/components/admin/PayloadAdminApp";
@@ -49,10 +49,11 @@ export default async function PayloadAdminPage({
     );
   }
 
-  const [products, enquiries, orders, categories, content, users, wholesale, invitations] = await Promise.all([
+  const [products, enquiries, orders, unconfirmed, categories, content, users, wholesale, invitations] = await Promise.all([
     listProducts().catch(() => []),
     listEnquiries().catch(() => []),
     listPaidOrders().catch(() => []),
+    listUnconfirmedOrders().catch(() => []),
     listCategories().catch(() => []),
     getContent(),
     listUsers().catch(() => []),
@@ -68,6 +69,7 @@ export default async function PayloadAdminPage({
         initialProducts={products}
         initialEnquiries={enquiries}
         initialOrders={orders}
+        initialUnconfirmed={unconfirmed}
         initialCategories={categories}
         initialContent={content}
         initialSegment={activeCollection}

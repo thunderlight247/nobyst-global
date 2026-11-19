@@ -1,7 +1,7 @@
 # NOBYST GLOBAL LTD website
 
 Corporate website for NOBYST GLOBAL LTD, Techiman, Bono East Region, Ghana.
-Next.js 14 (App Router), TypeScript, Tailwind CSS, Lenis smooth scrolling, GSAP + ScrollTrigger, Lucide icons.
+Next.js 15 (App Router, React 19), TypeScript, Tailwind CSS, Lenis smooth scrolling, GSAP + ScrollTrigger, Lucide icons.
 
 ## Run
 
@@ -9,6 +9,8 @@ Next.js 14 (App Router), TypeScript, Tailwind CSS, Lenis smooth scrolling, GSAP 
     npm run dev          # http://localhost:3000 (D1/R2 bindings from wrangler.jsonc)
     npm run db:init && npm run db:seed   # create and fill the local database
     npm run typecheck && npm run lint
+    npm test             # unit tests (Vitest, real SQL on an in-memory SQLite copy of the schema)
+    npm run check        # typecheck + lint + tests, the same checks CI runs
     npm run build        # plain Next.js build
     npm run worker:build # OpenNext worker bundle in .open-next
     npm run deploy       # worker:build + deploy to the nobyst-global worker
@@ -117,8 +119,11 @@ unchanged).
         npx wrangler d1 execute nobyst-catalog --remote --file=./db/seed.sql
 
    Then apply every file in `db/migrations/` in order (each with `--remote --file=...`). Migration
-   `0008_security.sql` adds admin roles and rate limits, and `0009_partners.sql` adds the partner portal, `0010_partner_invitations.sql` adds email invitations;
-   until they run, nobody can open the admin or the partner portal.
+   `0008_security.sql` adds admin roles and rate limits, `0009_partners.sql` the partner portal,
+   `0010_partner_invitations.sql` email invitations, `0011_order_fulfilment.sql` delivery details,
+   order statuses and partner quotes, and `0012_clear_placeholder_prices.sql` removes the test prices
+   from 0007. Until they run, nobody can open the admin or the partner portal.
+   (`0002` is already part of `schema.sql` on new databases.)
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is
    unchanged; the `workers.dev` hostname follows the account's subdomain).
@@ -178,5 +183,37 @@ current account's `database_id`, or the build deploys against a database that do
 - Product pages are rendered **on demand** from D1, so admin changes appear immediately after a deploy.
   URLs (`/products`, `/products/<slug>`, `/sitemap.xml`) stay the same; `sitemap.xml` also reflects D1.
 - Uploaded photos are served by `/api/media/<key>` straight out of R2 with long-lived caching headers.
-- Next.js 14.2.35 is used for adapter compatibility. Next 14 is EOL — plan an upgrade to 15.x + the
-  current adapter (Cloudflare support for 14.x ends early 2026).
+- Next.js 15.5 with React 19 and `@opennextjs/cloudflare` 1.20. Next 16 is listed in `ROADMAP.md`.
+- Do not run `npm run deploy` (or any build) while `npm run dev` is running: both write `.next`, and
+  the build fails with `PageNotFoundError: ENOENT`. Stop the dev server first.
+
+## Orders, payments and delivery
+
+- **Checkout** asks for delivery to an address (region, town, street or landmark) or pickup in
+  Techiman. Prices always come from D1. Out-of-stock and unpriced products cannot be added to the
+  cart or paid for; unpriced ones show **Ask for price**, which opens the Support form.
+- **Paystack webhook** — set `https://<site>/api/paystack/webhook` in Paystack → Settings →
+  API Keys & Webhooks. Payments are then confirmed even if the customer closes the tab. The route
+  checks Paystack's HMAC-SHA512 signature and re-verifies each transaction with Paystack's API.
+- **Admin → Orders** lists paid orders with delivery details and a status: New → Processing →
+  Dispatched / Ready for pickup → Delivered, or Cancelled. Customers are emailed at Dispatched,
+  Ready, Delivered and Cancelled, and see the status in `/account`. Below it, *Awaiting payment
+  confirmation* lists unpaid checkouts from the last 14 days with **Re-check with Paystack**.
+- **Partner quotes** — on a partner's bulk request (Admin → Enquiries), **Send quote** sets a unit
+  price and quantity (prefilled from the wholesale price) and emails the partner a Paystack payment
+  link, also shown as **Pay now** in their portal. A new quote replaces the earlier link.
+- **Admin → Wholesale** sets partner prices for every product in one table.
+- **Admin sessions** last 12 hours; customer sessions 30 days.
+
+## Testing and CI
+
+- `npm test` runs Vitest. `tests/helpers/d1.ts` loads `db/schema.sql` and every migration into an
+  in-memory SQLite database behind the same API as D1, so tests exercise the real SQL (rate limits,
+  single-use tokens, checkout pricing, payment verification, quotes, CSRF and upload checks).
+- `.github/workflows/ci.yml` runs typecheck, lint, tests and a Next build on every pull request and
+  push to `main`. Workers Builds still performs the deploy.
+- `npm run preview` builds and uploads a **preview version** without promoting it (Wrangler prints
+  its URL). It uses the **production** D1 and R2 bindings, so treat it as live data; a separate
+  staging environment is in `ROADMAP.md`.
+
+See `ROADMAP.md` for planned work.

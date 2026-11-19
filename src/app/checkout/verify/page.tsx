@@ -19,7 +19,7 @@ export default async function VerifyPage({
   const { reference, trxref } = await searchParams;
   const ref = reference ?? trxref ?? "";
 
-  let state: "paid" | "failed" | "not_found" | "missing" = "missing";
+  let state: "paid" | "failed" | "pending" | "not_found" | "missing" = "missing";
   if (ref && /^[A-Za-z0-9-]{4,80}$/.test(ref)) {
     try {
       state = await verifyCheckout(ref);
@@ -39,11 +39,13 @@ export default async function VerifyPage({
         <XCircle className="mx-auto text-red-500" size={48} aria-hidden />
       )}
       <h1 className="mt-4 text-2xl font-extrabold text-navy sm:text-3xl">
-        {paid ? "Payment received" : "Payment not confirmed"}
+        {paid ? "Payment received" : state === "pending" ? "Payment not confirmed yet" : "Payment not confirmed"}
       </h1>
       <p className="mt-3 text-sm text-navy/70">
         {paid
           ? `Thank you. Your order reference is ${ref}. We will be in touch about delivery.`
+          : state === "pending"
+          ? `Paystack has not confirmed this payment yet. If you completed it, it will be confirmed automatically within a few minutes and you will get an email. Your reference is ${ref}.`
           : "We could not confirm this payment. If you were charged, contact us with your reference."}
       </p>
       <Link

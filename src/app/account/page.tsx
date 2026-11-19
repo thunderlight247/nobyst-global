@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import AccountPanel, { SignOutButton } from "@/components/AccountPanel";
 import { getCurrentUser } from "@/lib/auth";
 import { listOrdersForUser } from "@/lib/orders";
+import { describeDelivery, fulfilmentLabel } from "@/lib/delivery";
 
 export const metadata: Metadata = {
   title: "My account",
@@ -75,8 +76,18 @@ export default async function AccountPage({
             <li key={o.reference} className="rounded-2xl border border-navy/10 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-mono text-sm font-bold text-navy">{o.reference}</p>
-                <p className="text-xs text-navy/60">{o.paidAt ? new Date(o.paidAt).toLocaleDateString("en-GB") : ""}</p>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-royal-100 px-2.5 py-0.5 text-[11px] font-bold text-royal">
+                    {fulfilmentLabel(o.fulfilmentStatus)}
+                  </span>
+                  <p className="text-xs text-navy/60">{o.paidAt ? new Date(o.paidAt.replace(" ", "T") + "Z").toLocaleDateString("en-GB") : ""}</p>
+                </div>
               </div>
+              {o.delivery.method && (
+                <p className="mt-1 text-xs text-navy/60">
+                  {o.delivery.method === "pickup" ? "Pickup" : "Delivery"}: {describeDelivery(o.delivery)}
+                </p>
+              )}
               <ul className="mt-3 divide-y divide-navy/5 text-sm text-navy/80">
                 {o.items.map((it, i) => (
                   <li key={i} className="flex justify-between py-2">

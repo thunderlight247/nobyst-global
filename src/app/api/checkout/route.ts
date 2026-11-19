@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { CheckoutError, createCheckout, type CheckoutInput } from "@/lib/orders";
 import { getCurrentUser } from "@/lib/auth";
 import { getEnv } from "@/lib/cloudflare";
+import { parseDelivery } from "@/lib/delivery";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ function parseInput(raw: unknown): CheckoutInput | string {
   if (name.length < 2 || name.length > 120) return "Please enter your name.";
   if (!EMAIL_RE.test(email) || email.length > 200) return "Please enter a valid email.";
   if (phone.length < 7 || phone.length > 30) return "Please enter a phone number.";
+  const delivery = parseDelivery(b.delivery);
+  if (typeof delivery === "string") return delivery;
   if (!Array.isArray(b.items) || b.items.length === 0 || b.items.length > 50) {
     return "Your cart is empty.";
   }
@@ -29,7 +32,7 @@ function parseInput(raw: unknown): CheckoutInput | string {
     }
     items.push({ slug: i.slug.slice(0, 200), color: i.color.slice(0, 60), quantity: i.quantity });
   }
-  return { name, email, phone, items };
+  return { name, email, phone, delivery, items };
 }
 
 export async function POST(request: Request) {
