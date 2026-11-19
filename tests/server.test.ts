@@ -25,6 +25,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { POST as login } from "@/app/api/auth/login/route";
+import { POST as forgot } from "@/app/api/auth/forgot/route";
 import { acceptInvitation, createInvitation, findInvitation, revokeInvitation } from "@/lib/invitations";
 import { CheckoutError, createCheckout, createPartnerQuote, updateFulfilment, verifyCheckout } from "@/lib/orders";
 import { listPartnerCatalogue, parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
@@ -373,5 +374,35 @@ describe("area-aware sign-in", () => {
     expect((await signIn("p@example.com", "partner")).body.home).toBe("/partner");
     expect((await signIn("p@example.com")).body.home).toBe("/partner");
     expect((await signIn("c@example.com")).body.home).toBe("/account");
+  });
+});
+
+describe("forgot password", () => {
+  const ask = async (email: string) =>
+    forgot(
+      new Request("https://shop.test/api/auth/forgot", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+    );
+
+  it("answers every request with the same message, known email or not", async () => {
+    await seedUser(state.env, "u", "known@example.com");
+    const replies = [];
+    for (const email of ["known@example.com", "unknown@example.com", "unknown@example.com"]) {
+      const res = await ask(email);
+      replies.push([res.status, await res.json()]);
+    }
+    expect(new Set(replies.map((r) => JSON.stringify(r))).size).toBe(1);
+    expect(replies[0][1]).toMatchObject({ ok: true });
+  });
+
+  it("creates a reset link only for a real account", async () => {
+    await seedUser(state.env, "u", "known@example.com");
+    await ask("unknown@example.com");
+    await ask("known@example.com");
+    const n = await state.env.DB.prepare("SELECT COUNT(*) AS n FROM password_resets").first<{ n: number }>();
+    expect(n?.n).toBe(1);
   });
 });

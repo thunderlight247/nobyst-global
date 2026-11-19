@@ -6,10 +6,13 @@ import { clientIp, hit, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-const DONE = NextResponse.json({
-  ok: true,
-  message: "If an account exists for this email, a reset link is on its way.",
-});
+// A new response every time: a Response body can only be read once, so sharing one object made
+// every request after the first in a worker return an empty body.
+const done = () =>
+  NextResponse.json({
+    ok: true,
+    message: "If an account exists for this email, a reset link is on its way.",
+  });
 
 export async function POST(request: Request) {
   const limited = await rateLimit([[`forgot:ip:${clientIp(request)}`, LIMITS.forgotIp]]);
@@ -23,11 +26,11 @@ export async function POST(request: Request) {
   }
 
   const email = typeof body.email === "string" ? normaliseEmail(body.email) : "";
-  if (!email || email.length > 200) return DONE;
+  if (!email || email.length > 200) return done();
 
   // Cap reset emails per address so nobody can flood an inbox. The reply stays the same either
   // way, so the limit does not reveal whether the account exists.
-  if (!(await hit(`forgot:email:${email}`, LIMITS.forgotEmail))) return DONE;
+  if (!(await hit(`forgot:email:${email}`, LIMITS.forgotEmail))) return done();
 
   const user = await findUserByEmail(email);
   if (user) {
@@ -45,5 +48,5 @@ export async function POST(request: Request) {
 <p>If you did not ask for this, you can ignore this email.</p>`
     );
   }
-  return DONE;
+  return done();
 }
