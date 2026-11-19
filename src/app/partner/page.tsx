@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Handshake } from "lucide-react";
-import { getCurrentUser, isStaff } from "@/lib/auth";
+import { getCurrentUser, getPendingUser, isStaff } from "@/lib/auth";
+import { getTwoFactorStatus } from "@/lib/two-factor";
+import TwoFactorSettings from "@/components/TwoFactorSettings";
 import { listEnquiriesForUser } from "@/lib/enquiries";
 import { listOpenQuotesForUser, listOrdersForUser } from "@/lib/orders";
 import { fulfilmentLabel } from "@/lib/delivery";
@@ -30,7 +32,10 @@ const STATUS_LABELS: Record<string, string> = {
  */
 export default async function PartnerPortal() {
   const user = await getCurrentUser().catch(() => null);
-  if (!user) redirect("/partner/login");
+  if (!user) {
+    if (await getPendingUser().catch(() => null)) redirect("/signin/verify?next=/partner");
+    redirect("/partner/login");
+  }
 
   if (user.role !== "partner" && !isStaff(user.role)) {
     return (
@@ -62,6 +67,7 @@ export default async function PartnerPortal() {
     preview ? Promise.resolve([]) : listOrdersForUser(user.id).catch(() => []),
     preview ? Promise.resolve([]) : listOpenQuotesForUser(user.id).catch(() => []),
   ]);
+  const twoFactor = await getTwoFactorStatus(user.id).catch(() => ({ enabled: false, recoveryCodesLeft: 0 }));
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-10 sm:px-6 sm:py-16 lg:px-8">
@@ -218,6 +224,18 @@ export default async function PartnerPortal() {
               </ul>
             )}
           </div>
+        </div>
+      )}
+      {!preview && (
+        <div className="mt-8 rounded-3xl border border-navy/10 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="font-display text-xl font-bold text-navy">Two-step sign-in</h2>
+          <p className="mb-4 mt-1 text-xs text-navy/60">Optional, recommended: protects your wholesale account if your password leaks.</p>
+          <TwoFactorSettings
+            enabled={twoFactor.enabled}
+            recoveryCodesLeft={twoFactor.recoveryCodesLeft}
+            canDisable
+            accountEmail={user.email}
+          />
         </div>
       )}
     </section>

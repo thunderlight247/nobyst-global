@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 import { canEnterArea, homeFor, type Area } from "@/lib/roles";
+import { isTwoFactorEnabled } from "@/lib/two-factor";
 
 export const dynamic = "force-dynamic";
 
@@ -56,5 +57,7 @@ export async function POST(request: Request) {
 
   const token = await createSession(user.id);
   (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions());
-  return NextResponse.json({ ok: true, home: homeFor(user.role) });
+  // With 2FA on, this session reaches nothing but the code page until a code is entered.
+  const twoFactorRequired = await isTwoFactorEnabled(user.id);
+  return NextResponse.json({ ok: true, home: homeFor(user.role), ...(twoFactorRequired ? { twoFactorRequired: true } : {}) });
 }

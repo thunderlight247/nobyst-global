@@ -46,6 +46,20 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
     setError(null);
   }
 
+  async function resetTwoFactor(user: UserSummary) {
+    const ok = window.confirm(
+      `Reset two-step sign-in for ${user.email}? Only do this if they lost their phone and recovery codes and you have confirmed it is really them. They are signed out${
+        user.role === "admin" || user.role === "owner" ? " and must set it up again before using the admin" : ""
+      }.`
+    );
+    if (!ok) return;
+    const res = await fetch(`/api/admin/users/${user.id}/two-factor`, { method: "DELETE" });
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) return onNotify(data.error ?? "Could not reset two-step sign-in.");
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, twoFactorEnabled: false } : u)));
+    onNotify(`Two-step sign-in reset for ${user.email}.`);
+  }
+
   async function save(user: UserSummary) {
     if ((draftRole === "admin" || draftRole === "owner") && draftRole !== user.role) {
       const ok = window.confirm(
@@ -119,6 +133,23 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
                   <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${ROLE_STYLES[u.role]}`}>
                     {ROLE_LABELS[u.role]}
                   </span>
+                  <span
+                    title={u.twoFactorEnabled ? "Two-step sign-in is on" : "Two-step sign-in is off"}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      u.twoFactorEnabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    2FA {u.twoFactorEnabled ? "on" : "off"}
+                  </span>
+                  {currentUser.role === "owner" && u.twoFactorEnabled && !isSelf && (
+                    <button
+                      type="button"
+                      onClick={() => resetTwoFactor(u)}
+                      className="min-h-[36px] rounded-lg px-2.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50"
+                    >
+                      Reset 2FA
+                    </button>
+                  )}
                   {!isEditing && (
                     <button
                       type="button"

@@ -249,7 +249,10 @@ export default function PayloadAdminApp({
         <div className="m-4 mt-auto rounded-xl border border-white/10 bg-white/5 p-3 text-xs">
           <span className="text-white/60">Signed in as {ROLE_LABELS[currentUser.role].toLowerCase()}</span>
           <p className="mt-0.5 truncate font-bold text-white">{currentUser.email}</p>
-          <Link href="/partner" className="mt-2 inline-block text-[11px] font-bold text-gold hover:underline">
+          <Link href="/admin/security" className="mt-2 block text-[11px] font-bold text-gold hover:underline">
+            Two-step sign-in →
+          </Link>
+          <Link href="/partner" className="mt-1 block text-[11px] font-bold text-gold hover:underline">
             Preview partner portal →
           </Link>
         </div>

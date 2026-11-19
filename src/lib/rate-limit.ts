@@ -44,6 +44,16 @@ export async function hit(key: string, { limit, windowSeconds }: Limit): Promise
   }
 }
 
+/** Forgets a counter, e.g. after a correct 2FA code, so only wrong guesses add up. */
+export async function clearLimit(key: string): Promise<void> {
+  try {
+    const { DB } = await getEnv();
+    await DB.prepare("DELETE FROM rate_limits WHERE key = ?").bind(key).run();
+  } catch (err) {
+    console.error("rate limit clear failed", err);
+  }
+}
+
 /** Checks every key; returns a 429 response if any is over its limit, otherwise null. */
 export async function rateLimit(checks: [string, Limit][]): Promise<NextResponse | null> {
   for (const [key, limit] of checks) {
@@ -71,4 +81,7 @@ export const LIMITS = {
   partnerRequestUser: { limit: 20, windowSeconds: 60 * 60 },
   inviteAdmin: { limit: 30, windowSeconds: 60 * 60 },
   inviteAcceptIp: { limit: 10, windowSeconds: 15 * 60 },
+  // Wrong 2FA codes: 5 per account per 15 minutes, then code entry is locked until the window ends.
+  twoFactorVerifyUser: { limit: 5, windowSeconds: 15 * 60 },
+  twoFactorSetupUser: { limit: 20, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;

@@ -27,9 +27,9 @@ export default function AreaLoginForm({ area, next }: { area: "admin" | "partner
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: data.email, password: data.password, area }),
       });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      const body = (await res.json().catch(() => ({}))) as { error?: string; twoFactorRequired?: boolean };
       if (!res.ok) throw new Error(body.error ?? "Something went wrong. Please try again.");
-      router.replace(next);
+      router.replace(body.twoFactorRequired ? `/signin/verify?next=${encodeURIComponent(next)}` : next);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

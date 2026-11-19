@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Handshake } from "lucide-react";
-import { getCurrentUser, isStaff } from "@/lib/auth";
+import { getCurrentUser, getPendingUser, isStaff } from "@/lib/auth";
 import { areaNext } from "@/lib/area-next";
 import AreaLoginForm from "@/components/AreaLoginForm";
 
@@ -20,6 +20,7 @@ export default async function PartnerLoginPage({
 }) {
   const next = areaNext("partner", (await searchParams).next);
   const user = await getCurrentUser().catch(() => null);
+  if (!user && (await getPendingUser().catch(() => null))) redirect(`/signin/verify?next=${encodeURIComponent(next)}`);
   if (user && (user.role === "partner" || isStaff(user.role))) redirect(next);
 
   return (

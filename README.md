@@ -59,6 +59,18 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
 - **Sign-in pages** — staff sign in at `/admin/login` (no sign-up; a non-staff account gets the same
   "Email or password is incorrect" as a wrong password), partners at `/partner/login`, customers at
   `/account`. Each sends people to their own area afterwards and only follows `next` links inside it.
+- **Two-step sign-in (2FA)** — authenticator-app codes (Google Authenticator, Microsoft Authenticator,
+  Authy, 1Password). **Required for admins and owners**: staff without it are sent to
+  `/admin/security` and every admin API answers 403 until it is on. Optional for partners (portal →
+  Two-step sign-in). After the password, `/signin/verify` asks for the 6-digit code or a recovery
+  code; until then the session counts as signed out everywhere. Ten single-use recovery codes are
+  shown once at setup. Five wrong codes lock code entry for that account for 15 minutes. Turning 2FA
+  on signs out the account's other devices. Password resets do not turn 2FA off. An owner can
+  **Reset 2FA** for someone who lost their phone (Users tab); if the only owner loses both phone and
+  codes: `npx wrangler d1 execute nobyst-catalog --remote --command "DELETE FROM user_totp WHERE user_id = (SELECT id FROM users WHERE email = 'you@example.com')"`.
+  Secrets are AES-GCM encrypted with the worker secret `TOTP_ENCRYPTION_KEY`
+  (`openssl rand -base64 32 | npx wrangler secret put TOTP_ENCRYPTION_KEY`; locally in `.dev.vars`).
+  Changing that key makes every existing authenticator stop working.
 - **Admin** — `/admin` (not linked in navigation, hidden from search engines). Guests are sent to
   `/admin/login`; non-staff accounts see an "access needed" page with no data. Make the **first** owner
   from the terminal after signing up on `/account`:
@@ -126,7 +138,7 @@ unchanged).
    `0008_security.sql` adds admin roles and rate limits, `0009_partners.sql` the partner portal,
    `0010_partner_invitations.sql` email invitations, `0011_order_fulfilment.sql` delivery details,
    order statuses and partner quotes, and `0012_clear_placeholder_prices.sql` removes the test prices
-   from 0007. Until they run, nobody can open the admin or the partner portal.
+   from 0007, and `0013_two_factor.sql` adds two-step sign-in. Until they run, nobody can open the admin or the partner portal.
    (`0002` is already part of `schema.sql` on new databases.)
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is

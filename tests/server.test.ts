@@ -26,6 +26,11 @@ import {
 } from "@/lib/auth";
 import { POST as login } from "@/app/api/auth/login/route";
 import { POST as forgot } from "@/app/api/auth/forgot/route";
+import { POST as verify2fa } from "@/app/api/auth/two-factor/verify/route";
+import { POST as disable2fa } from "@/app/api/auth/two-factor/disable/route";
+import { requireAdmin, getPendingUser } from "@/lib/auth";
+import { beginSetup, confirmSetup, getTwoFactorStatus, verifySecondStep } from "@/lib/two-factor";
+import { hotp, stepAt } from "@/lib/totp";
 import { acceptInvitation, createInvitation, findInvitation, revokeInvitation } from "@/lib/invitations";
 import { CheckoutError, createCheckout, createPartnerQuote, updateFulfilment, verifyCheckout } from "@/lib/orders";
 import { listPartnerCatalogue, parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
@@ -52,7 +57,10 @@ function stubPaystack(verify: { status: string; amount?: number; currency?: stri
 
 beforeEach(async () => {
   vi.unstubAllGlobals();
-  state.env = createTestEnv({ PAYSTACK_SECRET_KEY: "sk_test_x" });
+  state.env = createTestEnv({
+    PAYSTACK_SECRET_KEY: "sk_test_x",
+    TOTP_ENCRYPTION_KEY: btoa(String.fromCharCode(...new Uint8Array(32).fill(3))),
+  });
   state.cookie = undefined;
   await seedCategory(state.env);
 });
@@ -404,5 +412,115 @@ describe("forgot password", () => {
     await ask("known@example.com");
     const n = await state.env.DB.prepare("SELECT COUNT(*) AS n FROM password_resets").first<{ n: number }>();
     expect(n?.n).toBe(1);
+  });
+});
+
+describe("two-step sign-in", () => {
+  const sessionHash = async (token: string) => {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  };
+  const json = (body: unknown) =>
+    new Request("https://shop.test/x", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+  /** Sets up 2FA for `id` and returns the secret, its recovery codes and a fresh signed-in session. */
+  async function enrol(id: string, email: string, role = "partner") {
+    await seedUser(state.env, id, email, role);
+    const token = await createSession(id);
+    state.cookie = token;
+    const { secret } = (await beginSetup({ id, email }))!;
+    const codes = await confirmSetup(id, await hotp(secret, stepAt(Date.now())), await sessionHash(token));
+    return { secret, codes: codes!, token };
+  }
+
+  it("stores the secret encrypted and only turns on after a correct first code", async () => {
+    await seedUser(state.env, "p", "p@example.com", "partner");
+    const token = await createSession("p");
+    const { secret } = (await beginSetup({ id: "p", email: "p@example.com" }))!;
+    const row = await state.env.DB.prepare("SELECT secret_ciphertext FROM user_totp").first<{ secret_ciphertext: string }>();
+    expect(row?.secret_ciphertext).not.toContain(secret);
+    expect(await confirmSetup("p", "000000", await sessionHash(token))).toBeNull();
+    expect((await getTwoFactorStatus("p")).enabled).toBe(false);
+    const codes = await confirmSetup("p", await hotp(secret, stepAt(Date.now())), await sessionHash(token));
+    expect(codes).toHaveLength(10);
+    expect(await getTwoFactorStatus("p")).toEqual({ enabled: true, recoveryCodesLeft: 10 });
+  });
+
+  it("accepts each code and each recovery code only once", async () => {
+    const { secret, codes } = await enrol("p", "p@example.com");
+    // The setup code used the current step, so the next valid one is the following step.
+    const next = await hotp(secret, stepAt(Date.now()) + 1);
+    expect(await verifySecondStep("p", next)).toBe("totp");
+    expect(await verifySecondStep("p", next)).toBeNull();
+    expect(await verifySecondStep("p", codes[0].toUpperCase())).toBe("recovery");
+    expect(await verifySecondStep("p", codes[0])).toBeNull();
+    expect((await getTwoFactorStatus("p")).recoveryCodesLeft).toBe(9);
+  });
+
+  it("treats a new session as signed out until the code is entered", async () => {
+    await enrol("p", "p@example.com");
+    state.cookie = await createSession("p"); // a fresh sign-in on another device
+    expect(await getCurrentUser()).toBeNull();
+    expect((await getPendingUser())?.id).toBe("p");
+  });
+
+  it("signs out other devices when 2FA is turned on", async () => {
+    await seedUser(state.env, "p", "p@example.com", "partner");
+    await createSession("p");
+    const token = await createSession("p");
+    const { secret } = (await beginSetup({ id: "p", email: "p@example.com" }))!;
+    await confirmSetup("p", await hotp(secret, stepAt(Date.now())), await sessionHash(token));
+    const n = await state.env.DB.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = 'p'").first<{ n: number }>();
+    expect(n?.n).toBe(1);
+  });
+
+  it("verifies the second step through the API, then the session works", async () => {
+    const { codes } = await enrol("p", "p@example.com");
+    state.cookie = await createSession("p");
+    expect((await verify2fa(json({ code: "123456" }))).status).toBe(400);
+    const ok = await verify2fa(json({ code: codes[1] }));
+    expect(await ok.json()).toMatchObject({ ok: true, home: "/partner", usedRecoveryCode: true });
+    expect((await getCurrentUser())?.id).toBe("p");
+  });
+
+  it("locks code entry after 5 wrong codes", async () => {
+    await enrol("p", "p@example.com");
+    state.cookie = await createSession("p");
+    const statuses = [];
+    for (let i = 0; i < 6; i++) statuses.push((await verify2fa(json({ code: "000000" }))).status);
+    expect(statuses.slice(0, 5).every((s) => s === 400)).toBe(true);
+    expect(statuses[5]).toBe(429);
+  });
+
+  it("counts only wrong codes towards the lock", async () => {
+    const { secret, codes } = await enrol("p", "p@example.com");
+    for (let round = 0; round < 3; round++) {
+      state.cookie = await createSession("p");
+      for (let i = 0; i < 4; i++) await verify2fa(json({ code: "000000" }));
+      const ok = await verify2fa(json({ code: codes[round] }));
+      expect(ok.status).toBe(200);
+    }
+    void secret;
+  });
+
+  it("asks staff without 2FA to set it up before any admin API", async () => {
+    await seedUser(state.env, "a", "a@example.com", "admin");
+    state.cookie = await createSession("a");
+    const denied = await requireAdmin();
+    expect(denied?.status).toBe(403);
+    expect(await denied?.json()).toMatchObject({ twoFactorSetupRequired: true });
+  });
+
+  it("lets staff with 2FA through, and never lets them turn it off", async () => {
+    await enrol("a", "a@example.com", "owner");
+    expect(await requireAdmin()).toBeNull();
+    expect((await disable2fa(json({ code: "123456" }))).status).toBe(403);
+  });
+
+  it("tells the sign-in page when a code is needed", async () => {
+    await enrol("p", "p@example.com");
+    await state.env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = 'p'").bind(await hashPassword("pass-1234")).run();
+    const res = await login(json({ email: "p@example.com", password: "pass-1234", area: "partner" }));
+    expect(await res.json()).toEqual({ ok: true, home: "/partner", twoFactorRequired: true });
   });
 });

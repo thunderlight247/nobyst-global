@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/AccountPanel";
-import { getCurrentUser, isStaff, listUsers } from "@/lib/auth";
+import { getCurrentUser, getPendingUser, isStaff, listUsers } from "@/lib/auth";
 import { listWholesalePrices } from "@/lib/wholesale";
 import { listInvitations } from "@/lib/invitations";
 import { listProducts } from "@/lib/products";
@@ -30,8 +30,11 @@ export default async function PayloadAdminPage({
   const user = await getCurrentUser().catch(() => null);
   if (!user) {
     const path = segs?.length ? `/admin/${segs.join("/")}` : "/admin";
+    if (await getPendingUser().catch(() => null)) redirect(`/signin/verify?next=${encodeURIComponent(path)}`);
     redirect(`/admin/login?next=${encodeURIComponent(path)}`);
   }
+  // Staff must turn on two-step sign-in before seeing any admin data.
+  if (isStaff(user.role) && user.needsTwoFactorSetup) redirect("/admin/security");
   if (!isStaff(user.role)) {
     return (
       <main className="mx-auto max-w-lg px-5 py-20 text-center sm:px-6">

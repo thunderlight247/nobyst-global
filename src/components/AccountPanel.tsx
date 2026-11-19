@@ -49,8 +49,9 @@ export default function AccountPanel({ next }: { next?: string }) {
       setError(res.error ?? "Something went wrong. Please try again.");
       return;
     }
-    const home = (res as { home?: string }).home;
-    router.push(safeNext ?? (mode === "signup" ? "/account" : home ?? "/account"));
+    const { home, twoFactorRequired } = res as { home?: string; twoFactorRequired?: boolean };
+    const target = safeNext ?? (mode === "signup" ? "/account" : home ?? "/account");
+    router.push(twoFactorRequired ? `/signin/verify?next=${encodeURIComponent(target)}` : target);
     router.refresh();
   }
 

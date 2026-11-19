@@ -1,6 +1,6 @@
 # Admin and partner sign-in plan
 
-Status: **Phase 1 built (2026-11-19); Phases 2–4 planned.** Decisions made on 2026-11-19:
+Status: **Phases 1 and 2 built (2026-11-19); Phases 3–4 planned.** Decisions made on 2026-11-19:
 authenticator-app 2FA, required for admins and optional for partners; an owner role above admin;
 re-confirmation before risky actions; separate sign-in pages; a security log.
 
@@ -29,7 +29,7 @@ what, and admins, partners and customers share one sign-in page.
 - Same `/api/auth/login` backend with an `area` field, so the rate limits and timing protections
   apply everywhere.
 
-## Phase 2: authenticator-app 2FA (TOTP)
+## Phase 2: authenticator-app 2FA (TOTP) (done)
 
 - **Standard:** RFC 6238, 6-digit codes, 30-second steps, one step of clock drift allowed. It works
   with Google Authenticator, Microsoft Authenticator, Authy and 1Password, and needs no email or SMS.
@@ -59,6 +59,10 @@ what, and admins, partners and customers share one sign-in page.
 - **Password reset** does not turn 2FA off: a hacked inbox alone cannot get into the admin.
 - **QR code:** generated in the browser from the `otpauth://` link with a small QR library, with
   the text key shown for manual entry.
+
+Built as planned, with two adjustments: only wrong codes count towards the 5-code lock (a correct
+code clears it), and a recovery code can't be used to issue new recovery codes (that needs an
+authenticator code). The `created_at` and `reauth_at` session columns move to Phases 3–4.
 
 ## Phase 3: re-confirm risky actions
 

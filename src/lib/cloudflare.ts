@@ -44,6 +44,8 @@ export type CloudflareEnv = {
   SITE_URL?: string;
   /** Inbox for admin notifications (new partner applications, partner requests). Defaults to site.email. */
   ADMIN_EMAIL?: string;
+  /** 32 random bytes, base64. Encrypts authenticator secrets in D1. `wrangler secret put TOTP_ENCRYPTION_KEY`. */
+  TOTP_ENCRYPTION_KEY?: string;
 };
 
 /** Bindings from wrangler.jsonc (local miniflare in dev, Workers in production). */

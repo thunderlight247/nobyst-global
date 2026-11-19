@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import AccountPanel, { SignOutButton } from "@/components/AccountPanel";
-import { getCurrentUser, isStaff } from "@/lib/auth";
+import { getCurrentUser, getPendingUser, isStaff } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { listOrdersForUser } from "@/lib/orders";
 import { describeDelivery, fulfilmentLabel } from "@/lib/delivery";
 
@@ -22,6 +23,9 @@ export default async function AccountPage({
 }) {
   const { next } = await searchParams;
   const user = await getCurrentUser();
+  if (!user && (await getPendingUser().catch(() => null))) {
+    redirect(`/signin/verify${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+  }
 
   if (!user) {
     return (

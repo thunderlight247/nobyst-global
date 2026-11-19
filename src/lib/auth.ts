@@ -12,7 +12,17 @@ const ADMIN_SESSION_HOURS = 12;
 const RESET_MINUTES = 60;
 const PBKDF2_ITERATIONS = 100_000;
 
-export type CurrentUser = { id: string; email: string; name: string; role: Role; company: string | null };
+export type CurrentUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  company: string | null;
+  /** The account has an authenticator app set up. */
+  twoFactorEnabled: boolean;
+  /** Staff without 2FA: they must set it up before using the admin. */
+  needsTwoFactorSetup: boolean;
+};
 
 function toBase64(bytes: Uint8Array): string {
   let s = "";
@@ -105,7 +115,7 @@ export async function createUser(email: string, name: string, password: string):
   await DB.prepare("INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)")
     .bind(id, normalised, name, await hashPassword(password))
     .run();
-  return { id, email: normalised, name, role: "customer", company: null };
+  return { id, email: normalised, name, role: "customer", company: null, twoFactorEnabled: false, needsTwoFactorSetup: false };
 }
 
 /** Creates a session row and returns the raw token for the cookie. */
@@ -132,38 +142,95 @@ export async function deleteSession(token: string): Promise<void> {
   await DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256Hex(token)).run();
 }
 
-/** The signed-in customer for the current request, or null. */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+type SessionRow = {
+  id: string;
+  email: string;
+  name: string;
+  role?: unknown;
+  company?: string | null;
+  session_expires_at: string;
+  mfa_verified_at?: string | null;
+  totp_enabled_at?: string | null;
+};
+
+/** The SHA-256 of this request's session cookie, or null when there is none. */
+export async function currentSessionHash(): Promise<string | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token || token.length > 200) return null;
+  return sha256Hex(token);
+}
+
+/**
+ * Loads this request's session and account. `pending` is true when the account has 2FA on but
+ * this session has not passed the code step yet.
+ */
+async function loadSession(): Promise<{ user: CurrentUser; pending: boolean; tokenHash: string } | null> {
+  const tokenHash = await currentSessionHash();
+  if (!tokenHash) return null;
   const { DB } = await getEnv();
-  // u.* rather than named columns: role (0008) and company (0009) arrive with migrations, and a
-  // database without them simply yields customers, so admin and partner areas stay locked.
-  const tokenHash = await sha256Hex(token);
   const now = Date.now();
-  const row = await DB.prepare(
-    `SELECT u.*, s.expires_at AS session_expires_at FROM sessions s JOIN users u ON u.id = s.user_id
-     WHERE s.token_hash = ? AND s.expires_at > ?`
-  )
-    .bind(tokenHash, new Date(now).toISOString())
-    .first<{ id: string; email: string; name: string; role?: unknown; company?: string | null; session_expires_at: string }>();
+  const nowIso = new Date(now).toISOString();
+  let row: SessionRow | null;
+  try {
+    // u.* rather than named columns, so a database missing a newer users column still works.
+    row = await DB.prepare(
+      `SELECT u.*, s.expires_at AS session_expires_at, s.mfa_verified_at, t.enabled_at AS totp_enabled_at
+       FROM sessions s JOIN users u ON u.id = s.user_id
+       LEFT JOIN user_totp t ON t.user_id = u.id
+       WHERE s.token_hash = ? AND s.expires_at > ?`
+    )
+      .bind(tokenHash, nowIso)
+      .first<SessionRow>();
+  } catch {
+    // Before migration 0013 (no 2FA tables): nobody has 2FA, so staff are sent to set it up and
+    // setup fails until the migration runs. The admin stays locked rather than open.
+    row = await DB.prepare(
+      `SELECT u.*, s.expires_at AS session_expires_at FROM sessions s JOIN users u ON u.id = s.user_id
+       WHERE s.token_hash = ? AND s.expires_at > ?`
+    )
+      .bind(tokenHash, nowIso)
+      .first<SessionRow>();
+  }
   if (!row) return null;
 
-  // A session that began before the account became an admin still has a customer's 30-day life.
-  // Cap it, so every admin session ends at most ADMIN_SESSION_HOURS from now.
+  const role: Role = isRole(row.role) ? row.role : "customer";
+  // A session that began before the account became staff still has a customer's 30-day life.
+  // Cap it, so every staff session ends at most ADMIN_SESSION_HOURS from now.
   const adminCap = now + ADMIN_SESSION_HOURS * 3_600_000;
-  if (isRole(row.role) && isStaff(row.role) && Date.parse(row.session_expires_at) > adminCap) {
+  if (isStaff(role) && Date.parse(row.session_expires_at) > adminCap) {
     await DB.prepare("UPDATE sessions SET expires_at = ? WHERE token_hash = ?")
       .bind(new Date(adminCap).toISOString(), tokenHash)
       .run();
   }
+  const twoFactorEnabled = Boolean(row.totp_enabled_at);
   return {
-    id: row.id,
-    email: row.email,
-    name: row.name,
-    role: isRole(row.role) ? row.role : "customer",
-    company: row.company ?? null,
+    tokenHash,
+    pending: twoFactorEnabled && !row.mfa_verified_at,
+    user: {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      role,
+      company: row.company ?? null,
+      twoFactorEnabled,
+      needsTwoFactorSetup: isStaff(role) && !twoFactorEnabled,
+    },
   };
+}
+
+/**
+ * The signed-in account for the current request, or null. A session still waiting for its 2FA
+ * code counts as not signed in everywhere, except the code page (see getPendingUser).
+ */
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const session = await loadSession();
+  return session && !session.pending ? session.user : null;
+}
+
+/** The account whose session has passed the password but still needs its 2FA code, or null. */
+export async function getPendingUser(): Promise<CurrentUser | null> {
+  const session = await loadSession();
+  return session?.pending ? session.user : null;
 }
 
 /** The signed-in admin or owner, or null for everyone else. */
@@ -195,6 +262,15 @@ export async function requireRole(
   if (!allowed) {
     return { denied: NextResponse.json({ error: "Not allowed." }, { status: 403 }) };
   }
+  // Staff must have two-step sign-in on before any staff action, not only before the admin page.
+  if (isStaff(user.role) && user.needsTwoFactorSetup && roles.some((r) => r === "admin" || r === "owner")) {
+    return {
+      denied: NextResponse.json(
+        { error: "Set up two-step sign-in first.", twoFactorSetupRequired: true },
+        { status: 403 }
+      ),
+    };
+  }
   return { user };
 }
 
@@ -205,16 +281,24 @@ export type UserSummary = {
   role: Role;
   company: string | null;
   createdAt: string;
+  twoFactorEnabled: boolean;
 };
 
 /** Every account for the admin Users tab, admins and partners first. */
 export async function listUsers(): Promise<UserSummary[]> {
   const { DB } = await getEnv();
-  const { results } = await DB.prepare(
-    `SELECT id, email, name, role, company, created_at FROM users
-     ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'partner' THEN 2 ELSE 3 END, created_at DESC
-     LIMIT 500`
-  ).all<{ id: string; email: string; name: string; role: string; company: string | null; created_at: string }>();
+  type Row = { id: string; email: string; name: string; role: string; company: string | null; created_at: string; totp_enabled_at?: string | null };
+  const order = "ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'partner' THEN 2 ELSE 3 END, created_at DESC LIMIT 500";
+  let results: Row[];
+  try {
+    ({ results } = await DB.prepare(
+      `SELECT u.id, u.email, u.name, u.role, u.company, u.created_at, t.enabled_at AS totp_enabled_at
+       FROM users u LEFT JOIN user_totp t ON t.user_id = u.id
+       ${order.replace("CASE role", "CASE u.role").replace("created_at DESC", "u.created_at DESC")}`
+    ).all<Row>());
+  } catch {
+    ({ results } = await DB.prepare(`SELECT id, email, name, role, company, created_at FROM users ${order}`).all<Row>());
+  }
   return results.map((r) => ({
     id: r.id,
     email: r.email,
@@ -222,6 +306,7 @@ export async function listUsers(): Promise<UserSummary[]> {
     role: isRole(r.role) ? r.role : "customer",
     company: r.company,
     createdAt: r.created_at,
+    twoFactorEnabled: Boolean(r.totp_enabled_at),
   }));
 }
 

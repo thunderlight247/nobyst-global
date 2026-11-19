@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
-import { getCurrentUser, isStaff } from "@/lib/auth";
+import { getCurrentUser, getPendingUser, isStaff } from "@/lib/auth";
 import { areaNext } from "@/lib/area-next";
 import AreaLoginForm from "@/components/AreaLoginForm";
 
@@ -19,6 +19,7 @@ export default async function AdminLoginPage({
 }) {
   const next = areaNext("admin", (await searchParams).next);
   const user = await getCurrentUser().catch(() => null);
+  if (!user && (await getPendingUser().catch(() => null))) redirect(`/signin/verify?next=${encodeURIComponent(next)}`);
   if (user && isStaff(user.role)) redirect(next);
 
   return (
