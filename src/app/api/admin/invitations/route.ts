@@ -3,6 +3,7 @@ import { requireAdmin, requireRole } from "@/lib/auth";
 import { publicOrigin } from "@/lib/email";
 import { createInvitation, listInvitations, revokeInvitation, sendInvitationEmail } from "@/lib/invitations";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { domainAcceptsMail, suggestEmail } from "@/lib/email-check";
 
 // Admin only: every handler checks the signed-in user's role before doing anything.
 export const dynamic = "force-dynamic";
@@ -33,6 +34,16 @@ export async function POST(request: Request) {
 
   if (!EMAIL_RE.test(email) || email.length > 200) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+  }
+  if (!(await domainAcceptsMail(email))) {
+    const suggestion = suggestEmail(email);
+    return NextResponse.json(
+      {
+        error: `${email} cannot receive email: that domain has no mail server.${suggestion ? ` Did you mean ${suggestion}?` : " Check the address."}`,
+        suggestion,
+      },
+      { status: 400 }
+    );
   }
   if (name.length < 2) return NextResponse.json({ error: "Enter the contact's name." }, { status: 400 });
   if (company.length < 2) return NextResponse.json({ error: "Enter the partner's company name." }, { status: 400 });

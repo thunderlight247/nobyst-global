@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Mail, Send, X } from "lucide-react";
 import type { Invitation, InvitationStatus } from "@/lib/invitations";
+import { suggestEmail } from "@/lib/email-check";
 
 export type InviteDraft = { email: string; name: string; company: string; enquiryId: string | null };
 
@@ -80,6 +81,14 @@ export function InviteDialog({
             Email
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
           </label>
+          {suggestEmail(email) && (
+            <p className="-mt-1 text-xs text-amber-800">
+              Did you mean <strong>{suggestEmail(email)}</strong>?{" "}
+              <button type="button" onClick={() => setEmail(suggestEmail(email)!)} className="font-bold underline">
+                Use it
+              </button>
+            </p>
+          )}
           <label className="block text-xs font-bold text-navy">
             Contact name
             <input required minLength={2} maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className={field} />
