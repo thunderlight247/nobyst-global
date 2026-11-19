@@ -8,7 +8,7 @@ export const site = {
   email: "info@nobyst.com",
   phone: "+233 20 324 5658",
   whatsapp: "233203245658", // digits only, for wa.me links
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://nobyst-global.nobystecommerce.workers.dev",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://nobyst.com",
   positioning:
     "A Ghanaian enterprise based in Techiman, operating today in phone accessories retail and mobile money agency services, and building towards a diversified group.",
   intro:

@@ -40,7 +40,7 @@ export type CloudflareEnv = {
   RESEND_API_KEY?: string;
   /** Verified sender, e.g. "NOBYST GLOBAL <no-reply@yourdomain.com>". Plain var in wrangler. */
   EMAIL_FROM?: string;
-  /** Public site origin used in email links, e.g. https://nobyst-global.example.workers.dev */
+  /** Public site origin used in email links, e.g. https://nobyst.com */
   SITE_URL?: string;
   /** Inbox for admin notifications (new partner applications, partner requests). Defaults to site.email. */
   ADMIN_EMAIL?: string;

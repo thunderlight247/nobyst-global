@@ -24,7 +24,7 @@
   ],
   "vars": {
     "EMAIL_FROM": "NOBYST GLOBAL <info@nobyst.com>",
-    "SITE_URL": "https://nobyst-global.nobystecommerce.workers.dev"
+    "SITE_URL": "https://nobyst.com"
   },
   "observability": {
     "enabled": true
