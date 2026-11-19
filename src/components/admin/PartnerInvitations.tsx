@@ -33,6 +33,7 @@ export function InviteDialog({
   const [email, setEmail] = useState(draft.email);
   const [name, setName] = useState(draft.name);
   const [company, setCompany] = useState(draft.company);
+  const [trusted, setTrusted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -44,7 +45,7 @@ export function InviteDialog({
       const res = await adminFetch("/api/admin/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, company, enquiryId: draft.enquiryId }),
+        body: JSON.stringify({ email, name, company, enquiryId: draft.enquiryId, trusted }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         invitation?: Invitation;
@@ -95,8 +96,15 @@ export function InviteDialog({
             <input required minLength={2} maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className={field} />
           </label>
           <label className="block text-xs font-bold text-navy">
-            Company
+            Business name
             <input required minLength={2} maxLength={120} value={company} onChange={(e) => setCompany(e.target.value)} className={field} />
+          </label>
+          <label className="flex items-start gap-2 text-xs text-navy">
+            <input type="checkbox" checked={trusted} onChange={(e) => setTrusted(e.target.checked)} className="mt-0.5" />
+            <span>
+              <strong>Trust this partner right away.</strong> Their products go live without review. Leave
+              unticked to approve their first products yourself.
+            </span>
           </label>
         </div>
         {error && <p className="mt-3 text-sm font-bold text-rose-600">{error}</p>}
@@ -172,7 +180,11 @@ export default function PartnerInvitations({
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-navy">{inv.company}</p>
                 <p className="truncate text-xs text-navy/60">
-                  {inv.name} · {inv.email}
+                  {inv.name} · {inv.email}{" "}
+                  <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${inv.source === "application" ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-600"}`}>
+                    {inv.source === "application" ? "Automatic, from application" : "Sent by admin"}
+                  </span>
+                  {inv.trusted && <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Trusted</span>}
                 </p>
                 <p className="text-[11px] text-navy/40">
                   Sent {new Date(inv.createdAt.replace(" ", "T") + "Z").toLocaleDateString()}

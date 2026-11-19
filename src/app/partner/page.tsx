@@ -60,12 +60,27 @@ export default async function PartnerPortal() {
     );
   }
 
+  if (user.partnerStatus === "suspended") {
+    return (
+      <section className="mx-auto max-w-lg px-5 py-20 text-center sm:px-6">
+        <Handshake className="mx-auto text-royal" size={44} aria-hidden />
+        <h1 className="mt-4 text-2xl font-extrabold text-navy sm:text-3xl">Partner account suspended</h1>
+        <p className="mt-3 text-sm text-navy/70">
+          Your partner account is on hold, and your products are hidden from the shop. Please contact{" "}
+          <a href="mailto:info@nobyst.com" className="font-bold text-royal underline">info@nobyst.com</a>.
+        </p>
+      </section>
+    );
+  }
+
   const preview = isStaff(user.role);
+  // Wholesale prices and quotes are for approved (trusted) partners only.
+  const trusted = preview || user.partnerStatus === "trusted";
   const [catalogue, requests, orders, quotes] = await Promise.all([
-    listPartnerCatalogue(),
+    trusted ? listPartnerCatalogue() : Promise.resolve([]),
     preview ? Promise.resolve([]) : listEnquiriesForUser(user.id).catch(() => []),
     preview ? Promise.resolve([]) : listOrdersForUser(user.id).catch(() => []),
-    preview ? Promise.resolve([]) : listOpenQuotesForUser(user.id).catch(() => []),
+    preview || !trusted ? Promise.resolve([]) : listOpenQuotesForUser(user.id).catch(() => []),
   ]);
   const twoFactor = await getTwoFactorStatus(user.id).catch(() => ({ enabled: false, recoveryCodesLeft: 0 }));
 
@@ -125,6 +140,15 @@ export default async function PartnerPortal() {
         </div>
       )}
 
+      {!trusted && (
+        <div className="mt-8 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+          <strong>Your partner account is being reviewed.</strong> Our team checks each new partner before
+          their products go live. Wholesale prices and bulk quotes appear here once your account is approved.
+        </div>
+      )}
+
+      {trusted && (
+        <>
       <div className="mt-10 grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-start">
         <div className="rounded-3xl border border-navy/10 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="font-display text-xl font-bold text-navy">Wholesale price list</h2>
@@ -179,6 +203,9 @@ export default async function PartnerPortal() {
           />
         </div>
       </div>
+
+        </>
+      )}
 
       {!preview && (
         <div className="mt-8 grid gap-8 lg:grid-cols-2">

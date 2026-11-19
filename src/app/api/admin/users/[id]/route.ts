@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isRole, requireRole, updateUserAccess } from "@/lib/auth";
+import { isPartnerStatus } from "@/lib/roles";
 import { requireRecentAuth } from "@/lib/reauth";
 
 // Admin only: every handler checks the signed-in user's role before doing anything.
@@ -26,7 +27,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   try {
     // Owner rules (only owners manage admins; the last owner is protected) live in roles.ts.
-    const result = await updateUserAccess(auth.user, id, body.role, company);
+    const partnerStatus = isPartnerStatus(body.partnerStatus) ? body.partnerStatus : null;
+    const result = await updateUserAccess(auth.user, id, body.role, company, partnerStatus);
     if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json({ user: result.user });
   } catch (error) {

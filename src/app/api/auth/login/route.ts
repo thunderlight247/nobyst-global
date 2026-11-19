@@ -57,6 +57,10 @@ export async function POST(request: Request) {
 
   const token = await createSession(user.id);
   (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions());
+  if (area === "partner" && user.role === "partner" && user.partnerStatus === "suspended") {
+    return NextResponse.json({ error: "Your partner account is suspended. Contact info@nobyst.com." }, { status: 403 });
+  }
+
   // With 2FA on, this session reaches nothing but the code page until a code is entered.
   const twoFactorRequired = await isTwoFactorEnabled(user.id);
   return NextResponse.json({ ok: true, home: homeFor(user.role), ...(twoFactorRequired ? { twoFactorRequired: true } : {}) });

@@ -89,6 +89,14 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
   Wholesale prices are set per product in the admin product form and stored in their own
   `wholesale_prices` table, which public pages never read. Partners only see requests they sent while
   signed in (matched by account id, never by email). New partner requests email the admin inbox.
+- **Partner applications** — the **Partner with us** form needs a business name (plain text, no web
+  links, up to 80 characters). Each application is emailed to the admin inbox and, unless the email
+  already belongs to a partner or cannot receive mail, the business is **emailed its invitation
+  automatically** ("Dear <business>, thank you for applying…"). Automatic invitees become
+  **pending** partners: no wholesale prices, and (with the marketplace) products wait for approval.
+  Admins set a partner to Pending, Trusted or Suspended in the Users tab, and can tick "Trust this
+  partner right away" when inviting directly. Suspending signs the partner out. See
+  `docs/MARKETPLACE_PLAN.md`.
 - **Inviting partners** —
   1. A business fills in **Partner with us**. The enquiry is saved and the admin inbox gets an email
      with a link to it (`ADMIN_EMAIL` in `wrangler.jsonc` vars, defaulting to `site.email`).
@@ -144,8 +152,9 @@ unchanged).
    `0008_security.sql` adds admin roles and rate limits, `0009_partners.sql` the partner portal,
    `0010_partner_invitations.sql` email invitations, `0011_order_fulfilment.sql` delivery details,
    order statuses and partner quotes, and `0012_clear_placeholder_prices.sql` removes the test prices
-   from 0007, `0013_two_factor.sql` adds two-step sign-in and
-   `0014_reauth.sql` the "Confirm it's you" timestamp. Until they run, nobody can open the admin or the partner portal.
+   from 0007, `0013_two_factor.sql` adds two-step sign-in,
+   `0014_reauth.sql` the "Confirm it's you" timestamp and `0015_partner_applications.sql`
+   automatic invitations and partner status. Until they run, nobody can open the admin or the partner portal.
    (`0002` is already part of `schema.sql` on new databases.)
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is

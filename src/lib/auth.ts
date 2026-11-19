@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getEnv } from "./cloudflare";
-import { isRole, isStaff, roleChangeError, type Role } from "./roles";
+import { isPartnerStatus, isRole, isStaff, roleChangeError, type PartnerStatus, type Role } from "./roles";
 
 export { ROLES, isRole, isStaff, type Role } from "./roles";
 
@@ -22,6 +22,8 @@ export type CurrentUser = {
   twoFactorEnabled: boolean;
   /** Staff without 2FA: they must set it up before using the admin. */
   needsTwoFactorSetup: boolean;
+  /** For partners: pending, trusted or suspended. Null for everyone else. */
+  partnerStatus: PartnerStatus | null;
 };
 
 function toBase64(bytes: Uint8Array): string {
@@ -93,11 +95,11 @@ export function normaliseEmail(email: string): string {
 
 export async function findUserByEmail(
   email: string
-): Promise<{ id: string; email: string; name: string; password_hash: string; role: Role } | null> {
+): Promise<{ id: string; email: string; name: string; password_hash: string; role: Role; partnerStatus: PartnerStatus | null } | null> {
   const { DB } = await getEnv();
   const row = await DB.prepare("SELECT * FROM users WHERE email = ?")
     .bind(normaliseEmail(email))
-    .first<{ id: string; email: string; name: string; password_hash: string; role?: unknown }>();
+    .first<{ id: string; email: string; name: string; password_hash: string; role?: unknown; partner_status?: string | null }>();
   if (!row) return null;
   return {
     id: row.id,
@@ -105,6 +107,7 @@ export async function findUserByEmail(
     name: row.name,
     password_hash: row.password_hash,
     role: isRole(row.role) ? row.role : "customer",
+    partnerStatus: isPartnerStatus(row.partner_status) ? row.partner_status : null,
   };
 }
 
@@ -115,7 +118,7 @@ export async function createUser(email: string, name: string, password: string):
   await DB.prepare("INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)")
     .bind(id, normalised, name, await hashPassword(password))
     .run();
-  return { id, email: normalised, name, role: "customer", company: null, twoFactorEnabled: false, needsTwoFactorSetup: false };
+  return { id, email: normalised, name, role: "customer", company: null, twoFactorEnabled: false, needsTwoFactorSetup: false, partnerStatus: null };
 }
 
 /** Creates a session row and returns the raw token for the cookie. */
@@ -148,6 +151,7 @@ type SessionRow = {
   name: string;
   role?: unknown;
   company?: string | null;
+  partner_status?: string | null;
   session_expires_at: string;
   mfa_verified_at?: string | null;
   totp_enabled_at?: string | null;
@@ -214,6 +218,8 @@ async function loadSession(): Promise<{ user: CurrentUser; pending: boolean; tok
       company: row.company ?? null,
       twoFactorEnabled,
       needsTwoFactorSetup: isStaff(role) && !twoFactorEnabled,
+      // A partner with no recorded status predates statuses; they were all invited by an admin.
+      partnerStatus: role === "partner" ? (isPartnerStatus(row.partner_status) ? row.partner_status : "trusted") : null,
     },
   };
 }
@@ -274,6 +280,24 @@ export async function requireRole(
   return { user };
 }
 
+/**
+ * Guard for partner-only handlers. Suspended partners are refused; `trusted: true` also refuses
+ * pending partners (used for wholesale prices and quotes).
+ */
+export async function requirePartner(
+  options: { trusted?: boolean } = {}
+): Promise<{ user: CurrentUser } | { denied: NextResponse }> {
+  const auth = await requireRole("partner");
+  if ("denied" in auth) return auth;
+  if (auth.user.partnerStatus === "suspended") {
+    return { denied: NextResponse.json({ error: "Your partner account is suspended. Contact info@nobyst.com." }, { status: 403 }) };
+  }
+  if (options.trusted && auth.user.partnerStatus !== "trusted") {
+    return { denied: NextResponse.json({ error: "This is available once your partner account is approved." }, { status: 403 }) };
+  }
+  return auth;
+}
+
 export type UserSummary = {
   id: string;
   email: string;
@@ -282,17 +306,18 @@ export type UserSummary = {
   company: string | null;
   createdAt: string;
   twoFactorEnabled: boolean;
+  partnerStatus: PartnerStatus | null;
 };
 
 /** Every account for the admin Users tab, admins and partners first. */
 export async function listUsers(): Promise<UserSummary[]> {
   const { DB } = await getEnv();
-  type Row = { id: string; email: string; name: string; role: string; company: string | null; created_at: string; totp_enabled_at?: string | null };
+  type Row = { id: string; email: string; name: string; role: string; company: string | null; created_at: string; totp_enabled_at?: string | null; partner_status?: string | null };
   const order = "ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'partner' THEN 2 ELSE 3 END, created_at DESC LIMIT 500";
   let results: Row[];
   try {
     ({ results } = await DB.prepare(
-      `SELECT u.id, u.email, u.name, u.role, u.company, u.created_at, t.enabled_at AS totp_enabled_at
+      `SELECT u.*, t.enabled_at AS totp_enabled_at
        FROM users u LEFT JOIN user_totp t ON t.user_id = u.id
        ${order.replace("CASE role", "CASE u.role").replace("created_at DESC", "u.created_at DESC")}`
     ).all<Row>());
@@ -307,6 +332,7 @@ export async function listUsers(): Promise<UserSummary[]> {
     company: r.company,
     createdAt: r.created_at,
     twoFactorEnabled: Boolean(r.totp_enabled_at),
+    partnerStatus: r.role === "partner" ? (isPartnerStatus(r.partner_status) ? r.partner_status : "trusted") : null,
   }));
 }
 
@@ -319,10 +345,11 @@ export async function updateUserAccess(
   actor: { id: string; role: Role },
   id: string,
   role: Role,
-  company: string | null
+  company: string | null,
+  partnerStatus: PartnerStatus | null = null
 ): Promise<{ user: UserSummary } | { error: string; status: number }> {
   const { DB } = await getEnv();
-  const before = await DB.prepare("SELECT role FROM users WHERE id = ?").bind(id).first<{ role: string }>();
+  const before = await DB.prepare("SELECT * FROM users WHERE id = ?").bind(id).first<{ role: string; partner_status?: string | null }>();
   if (!before) return { error: "Account not found.", status: 404 };
   const current: Role = isRole(before.role) ? before.role : "customer";
 
@@ -330,18 +357,28 @@ export async function updateUserAccess(
   const error = roleChangeError({ actor, target: { id, role: current }, next: role, ownerCount: owners?.n ?? 0 });
   if (error) return { error, status: 403 };
 
+  // Partner standing: kept as is unless given; a new partner made by an admin starts trusted;
+  // anyone who stops being a partner loses it.
+  const nextPartnerStatus: PartnerStatus | null =
+    role !== "partner"
+      ? null
+      : partnerStatus ?? (isPartnerStatus(before.partner_status) ? before.partner_status : "trusted");
+
   // The owner-count condition is repeated in the UPDATE so two owners demoting each other at the
   // same moment can never leave the site with none.
   const res = await DB.prepare(
-    `UPDATE users SET role = ?, company = ? WHERE id = ?
+    `UPDATE users SET role = ?, company = ?, partner_status = ? WHERE id = ?
        AND (role != 'owner' OR ? = 'owner' OR (SELECT COUNT(*) FROM users WHERE role = 'owner') > 1)`
   )
-    .bind(role, company, id, role)
+    .bind(role, company, nextPartnerStatus, id, role)
     .run();
   if ((res.meta?.changes ?? 0) === 0) {
     return { error: "This is the only owner. Make someone else an owner first.", status: 409 };
   }
-  if (current !== role) await DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id).run();
+  // Signing out on a role change or a suspension makes the change apply immediately.
+  if (current !== role || (nextPartnerStatus === "suspended" && before.partner_status !== "suspended")) {
+    await DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id).run();
+  }
   const users = await listUsers();
   const user = users.find((u) => u.id === id);
   return user ? { user } : { error: "Account not found.", status: 404 };

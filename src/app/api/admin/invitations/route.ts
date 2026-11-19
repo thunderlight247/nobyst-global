@@ -59,6 +59,8 @@ export async function POST(request: Request) {
       company,
       enquiryId,
       invitedBy: auth.user.id,
+      source: "admin",
+      trusted: body.trusted === true,
     });
     const origin = await publicOrigin(request);
     const sent = await sendInvitationEmail(invitation, token, origin);

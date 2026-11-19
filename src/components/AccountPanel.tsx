@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordInput from "@/components/PasswordInput";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -104,9 +105,8 @@ export default function AccountPanel({ next }: { next?: string }) {
         {mode !== "forgot" && (
           <label className="block text-sm font-bold text-navy">
             Password
-            <input
+            <PasswordInput
               name="password"
-              type="password"
               required
               minLength={8}
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
@@ -211,11 +211,11 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <form onSubmit={onSubmit} className="grid gap-4">
       <label className="block text-sm font-bold text-navy">
         New password
-        <input name="password" type="password" required minLength={8} autoComplete="new-password" className={field} />
+        <PasswordInput name="password" required minLength={8} autoComplete="new-password" className={field} />
       </label>
       <label className="block text-sm font-bold text-navy">
         Confirm new password
-        <input name="confirm" type="password" required minLength={8} autoComplete="new-password" className={field} />
+        <PasswordInput name="confirm" required minLength={8} autoComplete="new-password" className={field} />
       </label>
       {error && (
         <p role="alert" className="text-sm font-semibold text-red-600">

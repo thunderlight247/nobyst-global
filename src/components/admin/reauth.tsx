@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
+import PasswordInput from "@/components/PasswordInput";
 
 /**
  * "Confirm it's you" for risky admin actions. adminFetch() behaves like fetch(), but when the
@@ -78,8 +79,7 @@ export function ReauthHost() {
         </p>
         <label className="mt-4 block text-xs font-bold text-navy">
           Password
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="current-password"
             required
             autoFocus

@@ -4,7 +4,15 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import type { UserSummary } from "@/lib/auth";
 import { adminFetch } from "@/components/admin/reauth";
-import { ROLE_LABELS, ROLES, roleChangeError, type Role } from "@/lib/roles";
+import {
+  PARTNER_STATUS_LABELS,
+  PARTNER_STATUSES,
+  ROLE_LABELS,
+  ROLES,
+  roleChangeError,
+  type PartnerStatus,
+  type Role,
+} from "@/lib/roles";
 
 type Props = {
   initialUsers: UserSummary[];
@@ -27,6 +35,7 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
   const [editing, setEditing] = useState<string | null>(null);
   const [draftRole, setDraftRole] = useState<Role>("customer");
   const [draftCompany, setDraftCompany] = useState("");
+  const [draftPartnerStatus, setDraftPartnerStatus] = useState<PartnerStatus>("trusted");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -44,6 +53,7 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
     setEditing(user.id);
     setDraftRole(user.role);
     setDraftCompany(user.company ?? "");
+    setDraftPartnerStatus(user.partnerStatus ?? "trusted");
     setError(null);
   }
 
@@ -76,7 +86,7 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
       const res = await adminFetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: draftRole, company: draftCompany }),
+        body: JSON.stringify({ role: draftRole, company: draftCompany, partnerStatus: draftRole === "partner" ? draftPartnerStatus : null }),
       });
       const data = (await res.json().catch(() => ({}))) as { user?: UserSummary; error?: string };
       if (!res.ok || !data.user) throw new Error(data.error ?? "Could not update the account.");
@@ -134,6 +144,19 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
                   <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${ROLE_STYLES[u.role]}`}>
                     {ROLE_LABELS[u.role]}
                   </span>
+                  {u.partnerStatus && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        u.partnerStatus === "trusted"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : u.partnerStatus === "pending"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-rose-100 text-rose-700"
+                      }`}
+                    >
+                      {PARTNER_STATUS_LABELS[u.partnerStatus]}
+                    </span>
+                  )}
                   <span
                     title={u.twoFactorEnabled ? "Two-step sign-in is on" : "Two-step sign-in is off"}
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -194,6 +217,26 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
                       className="mt-1 min-h-[40px] w-full rounded-lg border border-navy/20 px-3 text-sm"
                     />
                   </label>
+                  {draftRole === "partner" && (
+                    <label className="text-xs font-bold text-navy sm:col-span-3">
+                      Partner status
+                      <select
+                        value={draftPartnerStatus}
+                        onChange={(e) => setDraftPartnerStatus(e.target.value as PartnerStatus)}
+                        className="mt-1 min-h-[40px] w-full rounded-lg border border-navy/20 bg-white px-2 text-sm sm:w-64"
+                      >
+                        {PARTNER_STATUSES.map((st) => (
+                          <option key={st} value={st}>
+                            {PARTNER_STATUS_LABELS[st]}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="mt-1 block font-normal text-navy/55">
+                        Pending: products wait for your approval, no wholesale prices. Trusted: changes go live
+                        instantly. Suspended: signed out, products hidden.
+                      </span>
+                    </label>
+                  )}
                   <div className="flex gap-2">
                     <button
                       type="button"

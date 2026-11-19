@@ -3,6 +3,23 @@ import { createEnquiry, type EnquiryType } from "@/lib/enquiries";
 import { adminInbox, escapeHtml, publicOrigin, sendEmail } from "@/lib/email";
 import { site } from "@/data/site";
 import { clientIp, hit, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { createInvitation, revokeInvitation, sendInvitationEmail } from "@/lib/invitations";
+import { findUserByEmail, isStaff } from "@/lib/auth";
+import { domainAcceptsMail } from "@/lib/email-check";
+
+/**
+ * Business names from the partner form are put into an email sent to the address the visitor
+ * typed, so they must not be able to carry a link or a long message (that would let spammers send
+ * mail through us). Letters, numbers, spaces and ordinary punctuation, at most 80 characters.
+ */
+function cleanBusinessName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const name = value.replace(/\s+/g, " ").trim();
+  if (name.length < 2 || name.length > 80) return null;
+  if (/https?:|:\/\/|www\.|@|<|>/i.test(name)) return null;
+  if (!/^[\p{L}\p{N} &'’.,()\-\/+]+$/u.test(name)) return null;
+  return name;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +61,13 @@ export async function POST(request: Request) {
     if (rawMessage.length > 5000) {
       return NextResponse.json({ error: "Please keep your message under 5000 characters." }, { status: 400 });
     }
+    const businessName = type === "partnership" ? cleanBusinessName(body.company) : null;
+    if (type === "partnership" && !businessName) {
+      return NextResponse.json(
+        { error: "Please enter your business name (letters, numbers and simple punctuation, no web links)." },
+        { status: 400 }
+      );
+    }
     const quantity =
       typeof body.quantity === "number" && Number.isInteger(body.quantity) && body.quantity > 0 && body.quantity <= 1_000_000
         ? body.quantity
@@ -58,8 +82,38 @@ export async function POST(request: Request) {
       message: rawMessage,
       productName: text(body.productName, 160),
       quantity,
-      company: text(body.company, 120),
+      company: businessName ?? text(body.company, 120),
     });
+
+    // Partner applications get their invitation straight away, unless that email already belongs
+    // to a partner or staff account, or its domain cannot receive mail. It is capped per address
+    // like the acknowledgement below, so the form cannot flood anyone's inbox.
+    let autoInvite: "sent" | "existing" | "undeliverable" | "skipped" = "skipped";
+    if (type === "partnership" && businessName && (await hit(`enquiry:email:${email.toLowerCase()}`, LIMITS.enquiryEmail))) {
+      const existing = await findUserByEmail(email).catch(() => null);
+      if (existing && (existing.role === "partner" || isStaff(existing.role))) {
+        autoInvite = "existing";
+      } else if (!(await domainAcceptsMail(email))) {
+        autoInvite = "undeliverable";
+      } else {
+        const { invitation, token } = await createInvitation({
+          email,
+          name,
+          company: businessName,
+          enquiryId: enquiry.id,
+          invitedBy: null,
+          source: "application",
+          trusted: false,
+          markContacted: false,
+        });
+        if (await sendInvitationEmail(invitation, token, await publicOrigin(request))) {
+          autoInvite = "sent";
+        } else {
+          await revokeInvitation(invitation.id);
+          autoInvite = "undeliverable";
+        }
+      }
+    }
 
     // Tell the team about partnership applications, with a link straight to the enquiry where
     // they can send a partner invitation. Visitor text is escaped; this goes only to our inbox.
@@ -72,7 +126,16 @@ export async function POST(request: Request) {
 <p><strong>Organisation:</strong> ${escapeHtml(enquiry.company ?? "Not given")}<br>
 <strong>Category:</strong> ${escapeHtml(enquiry.topic ?? "Not given")}</p>
 <blockquote style="margin:12px 0;padding-left:12px;border-left:3px solid #ddd;color:#555">${escapeHtml(enquiry.message).replace(/\n/g, "<br>")}</blockquote>
-<p><a href="${origin}/admin/enquiries">Review it in the admin</a> and choose <em>Invite as partner</em> to send them a portal invitation.</p>`
+<p>${
+          autoInvite === "sent"
+            ? "An invitation to set up their partner account was emailed to them automatically. Their products will wait for your approval until you mark them trusted."
+            : autoInvite === "existing"
+            ? "This email already belongs to a partner or staff account, so no new invitation was sent."
+            : autoInvite === "undeliverable"
+            ? "<strong>No invitation was sent:</strong> their email address cannot receive mail. Check it and invite them from the admin."
+            : "No automatic invitation was sent (too many recent applications from this address)."
+        }</p>
+<p><a href="${origin}/admin/enquiries">Review it in the admin</a>.</p>`
       );
     }
 
@@ -80,7 +143,8 @@ export async function POST(request: Request) {
     // used to flood someone else's inbox. The email deliberately does not quote the submitted
     // message: echoing visitor text to an arbitrary address would turn the site into a spam relay.
     // A mail failure never fails the saved enquiry.
-    if (await hit(`enquiry:email:${email.toLowerCase()}`, LIMITS.enquiryEmail)) {
+    // Partner applications already got their invitation (or were rate limited above).
+    if (type !== "partnership" && (await hit(`enquiry:email:${email.toLowerCase()}`, LIMITS.enquiryEmail))) {
       await sendEmail(
         enquiry.email,
         "We received your message - NOBYST GLOBAL",
@@ -91,7 +155,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, id: enquiry.id }, { status: 201 });
+    return NextResponse.json({ ok: true, id: enquiry.id, invitationSent: autoInvite === "sent" }, { status: 201 });
   } catch (error) {
     console.error("Failed to capture enquiry:", error);
     return NextResponse.json({ error: "Could not save enquiry." }, { status: 500 });

@@ -62,6 +62,18 @@ export function roleChangeError(input: {
   return null;
 }
 
+/** A partner's standing: pending partners wait for approval, suspended ones have no access. */
+export type PartnerStatus = "pending" | "trusted" | "suspended";
+export const PARTNER_STATUSES: PartnerStatus[] = ["pending", "trusted", "suspended"];
+export function isPartnerStatus(value: unknown): value is PartnerStatus {
+  return typeof value === "string" && (PARTNER_STATUSES as string[]).includes(value);
+}
+export const PARTNER_STATUS_LABELS: Record<PartnerStatus, string> = {
+  pending: "Pending review",
+  trusted: "Trusted",
+  suspended: "Suspended",
+};
+
 export const ROLE_LABELS: Record<Role, string> = {
   customer: "Customer",
   partner: "Partner",

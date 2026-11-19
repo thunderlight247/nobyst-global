@@ -15,6 +15,10 @@ export type Invitation = {
   createdAt: string;
   expiresAt: string;
   status: InvitationStatus;
+  /** "application": sent automatically from the partner form; "admin": sent by an admin. */
+  source: "application" | "admin";
+  /** The partner becomes trusted (no product approval) as soon as they accept. */
+  trusted: boolean;
 };
 
 type InvitationRow = {
@@ -27,6 +31,8 @@ type InvitationRow = {
   expires_at: string;
   accepted_at: string | null;
   revoked_at: string | null;
+  source?: string | null;
+  trusted?: number | null;
 };
 
 function statusOf(row: InvitationRow): InvitationStatus {
@@ -46,6 +52,8 @@ function mapRow(row: InvitationRow): Invitation {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     status: statusOf(row),
+    source: row.source === "application" ? "application" : "admin",
+    trusted: Boolean(row.trusted),
   };
 }
 
@@ -58,7 +66,12 @@ export async function createInvitation(input: {
   name: string;
   company: string;
   enquiryId: string | null;
-  invitedBy: string;
+  /** The admin who sent it, or null for an automatic invitation from the partner form. */
+  invitedBy: string | null;
+  source?: "application" | "admin";
+  trusted?: boolean;
+  /** Mark the linked enquiry as contacted (admin invitations). Automatic ones leave it "new". */
+  markContacted?: boolean;
 }): Promise<{ invitation: Invitation; token: string }> {
   const { DB } = await getEnv();
   const email = normaliseEmail(input.email);
@@ -73,14 +86,25 @@ export async function createInvitation(input: {
   const token = randomToken();
   const expires = new Date(now.getTime() + INVITE_DAYS * 86_400_000).toISOString();
   await DB.prepare(
-    `INSERT INTO partner_invitations (id, token_hash, email, name, company, enquiry_id, invited_by, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO partner_invitations (id, token_hash, email, name, company, enquiry_id, invited_by, expires_at, source, trusted)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(id, await sha256Hex(token), email, input.name, input.company, input.enquiryId, input.invitedBy, expires)
+    .bind(
+      id,
+      await sha256Hex(token),
+      email,
+      input.name,
+      input.company,
+      input.enquiryId,
+      input.invitedBy,
+      expires,
+      input.source ?? "admin",
+      input.trusted ? 1 : 0
+    )
     .run();
 
-  // Inviting counts as replying to the enquiry.
-  if (input.enquiryId) {
+  // An admin inviting counts as replying to the enquiry.
+  if (input.enquiryId && input.markContacted !== false) {
     await DB.prepare("UPDATE enquiries SET status = 'contacted' WHERE id = ? AND status = 'new'")
       .bind(input.enquiryId)
       .run();
@@ -122,18 +146,23 @@ export async function acceptInvitation(
   const claimed = await DB.prepare(
     `UPDATE partner_invitations SET accepted_at = ?, accepted_user_id = ?
      WHERE token_hash = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ?
-     RETURNING company`
+     RETURNING company, trusted`
   )
     .bind(now, user.id, await sha256Hex(token), now)
-    .first<{ company: string }>();
+    .first<{ company: string; trusted: number }>();
   if (!claimed) {
     return { ok: false, error: "This invitation link is invalid, used or expired. Ask us for a new one." };
   }
 
   await DB.prepare(
-    "UPDATE users SET role = CASE WHEN role IN ('admin', 'owner') THEN role ELSE 'partner' END, company = ? WHERE id = ?"
+    `UPDATE users SET
+       role = CASE WHEN role IN ('admin', 'owner') THEN role ELSE 'partner' END,
+       company = ?,
+       -- An already-trusted partner stays trusted; otherwise the invitation decides.
+       partner_status = CASE WHEN partner_status = 'trusted' OR ? = 1 THEN 'trusted' ELSE 'pending' END
+     WHERE id = ?`
   )
-    .bind(claimed.company, user.id)
+    .bind(claimed.company, claimed.trusted ? 1 : 0, user.id)
     .run();
   return { ok: true, company: claimed.company };
 }
@@ -164,15 +193,34 @@ export async function revokeInvitation(id: string): Promise<boolean> {
 /** Emails the invitation link. Returns false if the mail provider refused it. */
 export async function sendInvitationEmail(invitation: Invitation, token: string, origin: string): Promise<boolean> {
   const link = `${origin}/partner/invite?token=${encodeURIComponent(token)}`;
+  const company = escapeHtml(invitation.company);
+  const opening =
+    invitation.source === "application"
+      ? `Thank you for applying to partner with NOBYST GLOBAL LTD. We are delighted that <strong>${company}</strong> has chosen to bring its business online with us.`
+      : `We are pleased to invite <strong>${company}</strong> to partner with NOBYST GLOBAL LTD and bring your business online with us.`;
   return sendEmail(
     invitation.email,
-    "Your NOBYST GLOBAL partner portal invitation",
-    `<p>Hello ${escapeHtml(invitation.name)},</p>
-<p>Thank you for your interest in partnering with NOBYST GLOBAL. We have set up partner access for
-<strong>${escapeHtml(invitation.company)}</strong>.</p>
-<p>Use the link below to create your sign-in and open your partner portal, where you can see wholesale
-prices and send bulk order requests.</p>
-<p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#0B1F4B;color:#fff;border-radius:999px;text-decoration:none;font-weight:bold">Open my partner invitation</a></p>
-<p>The link works once and expires in ${INVITE_DAYS} days. If you were not expecting this, you can ignore this email.</p>`
+    `Welcome to NOBYST GLOBAL, ${invitation.company}: set up your partner account`,
+    `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#0B1F4B;max-width:560px">
+<p>Dear ${company},</p>
+<p>${opening}</p>
+<p>Your partner account gives you one place to:</p>
+<ul style="padding-left:20px;margin:0 0 12px">
+  <li>list your products on <a href="${origin}" style="color:#1D4ED8">nobyst.com</a>, with photos, prices and stock;</li>
+  <li>receive and manage orders from customers across Ghana;</li>
+  <li>follow your sales and payouts.</li>
+</ul>
+<p>To get started, create your sign-in with the button below.${
+      invitation.trusted
+        ? ""
+        : " Our team reviews each new partner's first products before they appear in the shop, usually within one working day."
+    }</p>
+<p style="margin:24px 0"><a href="${link}" style="display:inline-block;padding:12px 22px;background:#0B1F4B;color:#ffffff;border-radius:999px;text-decoration:none;font-weight:bold">Set up my partner account</a></p>
+<p style="font-size:13px;color:#555">This link is personal to ${escapeHtml(invitation.email)}, works once and expires in ${INVITE_DAYS} days. If you did not ${
+      invitation.source === "application" ? "apply" : "expect this invitation"
+    }, you can safely ignore this email.</p>
+<p>We look forward to working with you.</p>
+<p>Warm regards,<br><strong>The NOBYST GLOBAL team</strong><br>Techiman, Bono East Region, Ghana<br><a href="mailto:info@nobyst.com" style="color:#1D4ED8">info@nobyst.com</a></p>
+</div>`
   );
 }

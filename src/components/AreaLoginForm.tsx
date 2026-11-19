@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import PasswordInput from "@/components/PasswordInput";
 
 const field =
   "mt-1.5 min-h-[44px] w-full rounded-xl border border-navy/20 bg-paper/50 px-4 py-3 text-sm text-navy placeholder:text-navy/40 focus:border-royal focus:bg-white focus:outline-none focus:ring-2 focus:ring-royal/20";
@@ -45,7 +46,7 @@ export default function AreaLoginForm({ area, next }: { area: "admin" | "partner
       </label>
       <label className="block text-xs font-bold text-navy">
         Password
-        <input name="password" type="password" required autoComplete="current-password" className={field} />
+        <PasswordInput name="password" required autoComplete="current-password" className={field} />
       </label>
       {error && (
         <p role="alert" className="text-sm font-bold text-rose-600">

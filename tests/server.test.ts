@@ -34,6 +34,8 @@ import { hotp, stepAt } from "@/lib/totp";
 import { requireRecentAuth } from "@/lib/reauth";
 import { POST as reauth } from "@/app/api/auth/reauth/route";
 import { PATCH as patchUser } from "@/app/api/admin/users/[id]/route";
+import { POST as submitEnquiry } from "@/app/api/enquiries/route";
+import { requirePartner } from "@/lib/auth";
 import { acceptInvitation, createInvitation, findInvitation, revokeInvitation } from "@/lib/invitations";
 import { CheckoutError, createCheckout, createPartnerQuote, updateFulfilment, verifyCheckout } from "@/lib/orders";
 import { listPartnerCatalogue, parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
@@ -589,5 +591,113 @@ describe("confirm it's you", () => {
     expect(await first.json()).toMatchObject({ reauthRequired: true });
     await reauth(json({ password: "pass-1234", code: await hotp(secret, stepAt(Date.now()) + 1) }));
     expect((await change()).status).toBe(200);
+  });
+});
+
+describe("partner applications", () => {
+  /** Stubs DNS (mail domains) and Resend; records every email sent. */
+  function stubMail(mailDomainExists = true) {
+    const sent: { to: string[]; subject: string; html: string }[] = [];
+    state.env.RESEND_API_KEY = "re_x";
+    state.env.EMAIL_FROM = "NOBYST <info@nobyst.com>";
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      if (url.includes("dns-query")) {
+        return new Response(JSON.stringify(mailDomainExists ? { Status: 0, Answer: [{ type: 15 }] } : { Status: 3 }));
+      }
+      if (url.includes("resend")) {
+        sent.push(JSON.parse(String(init?.body)));
+        return new Response("{}", { status: 200 });
+      }
+      return new Response("not stubbed", { status: 500 });
+    });
+    return sent;
+  }
+  const apply = (fields: Record<string, unknown>) =>
+    submitEnquiry(
+      new Request("https://shop.test/api/enquiries", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "partnership",
+          name: "Ama Mensah",
+          email: "ama@example.com",
+          message: "We would like to sell our phone cases on your site.",
+          company: "Ama Phone Hub",
+          ...fields,
+        }),
+      })
+    );
+
+  it("emails the team and sends the business its invitation straight away", async () => {
+    const sent = stubMail();
+    const res = await apply({});
+    expect(await res.json()).toMatchObject({ ok: true, invitationSent: true });
+    const toBusiness = sent.find((m) => m.to[0] === "ama@example.com");
+    expect(toBusiness?.html).toContain("Dear Ama Phone Hub,");
+    expect(toBusiness?.html).toContain("/partner/invite?token=");
+    expect(sent.find((m) => m.subject.startsWith("New partner application"))?.html).toContain("emailed to them automatically");
+    // No second, generic "we received your message" email to the business.
+    expect(sent.filter((m) => m.to[0] === "ama@example.com")).toHaveLength(1);
+    const inv = await state.env.DB.prepare("SELECT source, trusted FROM partner_invitations").first();
+    expect(inv).toEqual({ source: "application", trusted: 0 });
+    const enquiry = await state.env.DB.prepare("SELECT status, company FROM enquiries").first();
+    expect(enquiry).toEqual({ status: "new", company: "Ama Phone Hub" });
+  });
+
+  it("requires a plain business name, so the email cannot carry links", async () => {
+    stubMail();
+    for (const company of ["", "x", "Visit www.spam.example now", "http://spam.example", "<b>Shop</b>", "a".repeat(81)]) {
+      expect((await apply({ company })).status).toBe(400);
+    }
+    // Each rejected try still counts towards the form's per-connection limit; start a fresh window.
+    await state.env.DB.prepare("DELETE FROM rate_limits").run();
+    expect((await apply({ company: "Kofi & Sons (Techiman) Ltd." })).status).toBe(201);
+  });
+
+  it("does not invite addresses that cannot receive mail, or existing partners", async () => {
+    let sent = stubMail(false);
+    expect(await (await apply({})).json()).toMatchObject({ invitationSent: false });
+    expect(sent.find((m) => m.subject.startsWith("New partner application"))?.html).toContain("cannot receive mail");
+
+    sent = stubMail(true);
+    await seedUser(state.env, "p", "kofi@example.com", "partner");
+    expect(await (await apply({ email: "kofi@example.com" })).json()).toMatchObject({ invitationSent: false });
+    expect(sent.some((m) => m.to[0] === "kofi@example.com")).toBe(false);
+  });
+
+  it("makes automatic invitees pending partners and admin-trusted invitees trusted", async () => {
+    stubMail();
+    await seedUser(state.env, "u1", "one@example.com");
+    await seedUser(state.env, "u2", "two@example.com");
+    const auto = await createInvitation({ email: "one@example.com", name: "One", company: "One Ltd", enquiryId: null, invitedBy: null, source: "application" });
+    const admin = await createInvitation({ email: "two@example.com", name: "Two", company: "Two Ltd", enquiryId: null, invitedBy: null, trusted: true });
+    await acceptInvitation(auto.token, { id: "u1", email: "one@example.com" });
+    await acceptInvitation(admin.token, { id: "u2", email: "two@example.com" });
+    const rows = (await state.env.DB.prepare("SELECT id, partner_status FROM users ORDER BY id").all()).results;
+    expect(rows).toEqual([
+      { id: "u1", partner_status: "pending" },
+      { id: "u2", partner_status: "trusted" },
+    ]);
+  });
+
+  it("keeps wholesale for trusted partners and shuts suspended partners out", async () => {
+    await state.env.DB.prepare("INSERT INTO users (id, email, name, password_hash, role, partner_status) VALUES ('p', 'p@e.com', 'P', 'x', 'partner', 'pending')").run();
+    state.cookie = await createSession("p");
+    expect("user" in (await requirePartner())).toBe(true);
+    expect("denied" in (await requirePartner({ trusted: true }))).toBe(true);
+    await state.env.DB.prepare("UPDATE users SET partner_status = 'trusted'").run();
+    expect("user" in (await requirePartner({ trusted: true }))).toBe(true);
+    await state.env.DB.prepare("UPDATE users SET partner_status = 'suspended'").run();
+    expect("denied" in (await requirePartner())).toBe(true);
+  });
+
+  it("signs a partner out when an admin suspends them", async () => {
+    await seedUser(state.env, "o", "o@e.com", "owner");
+    await state.env.DB.prepare("INSERT INTO users (id, email, name, password_hash, role, partner_status) VALUES ('p', 'p@e.com', 'P', 'x', 'partner', 'trusted')").run();
+    await createSession("p");
+    const result = await updateUserAccess({ id: "o", role: "owner" }, "p", "partner", "P Ltd", "suspended");
+    expect(result).toMatchObject({ user: { partnerStatus: "suspended" } });
+    const n = await state.env.DB.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = 'p'").first<{ n: number }>();
+    expect(n?.n).toBe(0);
   });
 });

@@ -9,7 +9,7 @@ const field =
   "mt-1.5 min-h-[44px] w-full rounded-xl border border-navy/20 bg-paper/50 px-4 py-3 text-sm text-navy placeholder:text-navy/40 transition-all focus:border-royal focus:bg-white focus:outline-none focus:ring-2 focus:ring-royal/20";
 
 export default function EnquiryForm() {
-  const [sent, setSent] = useState<{ mail: string } | null>(null);
+  const [sent, setSent] = useState<{ mail: string; invited: boolean } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -22,6 +22,8 @@ export default function EnquiryForm() {
     const next: Record<string, string> = {};
     if ((data.name ?? "").trim().length < 2) next.name = "Please enter your full name.";
     if (!/^\S+@\S+\.\S+$/.test(data.email ?? "")) next.email = "Please enter a valid email address.";
+    if ((data.organisation ?? "").trim().length < 2) next.organisation = "Please enter your business name.";
+    else if (/https?:|:\/\/|www\.|@/i.test(data.organisation)) next.organisation = "Please enter the business name only, without web links.";
     if ((data.message ?? "").trim().length < 20)
       next.message = "Please write at least 20 characters describing your proposal.";
     if (Object.keys(next).length) {
@@ -55,9 +57,16 @@ export default function EnquiryForm() {
           message: data.message.trim(),
         }),
       });
-      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const result = (await res.json().catch(() => ({}))) as { error?: string; invitationSent?: boolean };
+      if (!res.ok) {
+        if (res.status === 400 && result.error) {
+          setErrors({ organisation: result.error });
+          return;
+        }
+        throw new Error(`Status ${res.status}`);
+      }
       setErrors({});
-      setSent({ mail: mailtoLink(`Partnership enquiry — ${data.name.trim()}`, body) });
+      setSent({ mail: mailtoLink(`Partnership enquiry — ${data.name.trim()}`, body), invited: Boolean(result.invitationSent) });
       form.reset();
     } catch {
       setServerError("We could not send your enquiry. Please try again, or email us directly.");
@@ -74,8 +83,9 @@ export default function EnquiryForm() {
           <div>
             <p className="font-display text-lg font-bold text-green-900">Thank you, your enquiry is in</p>
             <p className="mt-1 text-sm leading-relaxed text-green-900/80">
-              Our team will review your application and reply to the email address you gave. If approved,
-              you will receive an invitation link to your own partner portal.
+              {sent.invited
+                ? "We have emailed you an invitation to set up your partner account. Open it to create your sign-in, then add your products; our team reviews new partners' first products before they go live."
+                : "Our team will review your application and reply to the email address you gave."}
             </p>
             <div className="mt-4 flex flex-wrap gap-2.5">
               <a
@@ -113,13 +123,17 @@ export default function EnquiryForm() {
         </label>
 
         <label className="block text-sm font-bold text-navy">
-          Organisation (optional)
+          Business name
           <input
             name="organisation"
             autoComplete="organization"
-            placeholder="Company or enterprise"
+            placeholder="e.g. Ama Phone Hub"
+            required
+            maxLength={80}
+            aria-invalid={Boolean(errors.organisation)}
             className={field}
           />
+          {errors.organisation && <span className="mt-1 block text-xs font-semibold text-red-600">{errors.organisation}</span>}
         </label>
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordInput from "@/components/PasswordInput";
 
 const field =
   "mt-1.5 min-h-[44px] w-full rounded-xl border border-navy/20 bg-paper/50 px-4 py-3 text-sm text-navy focus:border-royal focus:bg-white focus:outline-none focus:ring-2 focus:ring-royal/20";
@@ -74,11 +75,11 @@ export default function InviteAcceptForm(props: Props) {
       </label>
       <label className="block text-xs font-bold text-navy">
         Choose a password
-        <input name="password" type="password" required minLength={8} maxLength={200} className={field} autoComplete="new-password" />
+        <PasswordInput name="password" required minLength={8} maxLength={200} className={field} autoComplete="new-password" />
       </label>
       <label className="block text-xs font-bold text-navy">
         Confirm password
-        <input name="confirm" type="password" required minLength={8} maxLength={200} className={field} autoComplete="new-password" />
+        <PasswordInput name="confirm" required minLength={8} maxLength={200} className={field} autoComplete="new-password" />
       </label>
       {error && <p className="text-sm font-bold text-rose-600">{error}</p>}
       <button

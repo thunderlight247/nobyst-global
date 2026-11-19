@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { requirePartner } from "@/lib/auth";
 import { createPartnerRequest, listEnquiriesForUser } from "@/lib/enquiries";
 import { listPartnerCatalogue } from "@/lib/wholesale";
 import { adminInbox, escapeHtml, sendEmail } from "@/lib/email";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 
-// Partner accounts only. Every query is scoped to the signed-in partner's own user id.
+// Trusted partner accounts only. Every query is scoped to the signed-in partner's own user id.
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const auth = await requireRole("partner");
+  const auth = await requirePartner({ trusted: true });
   if ("denied" in auth) return auth.denied;
   return NextResponse.json({ requests: await listEnquiriesForUser(auth.user.id) });
 }
 
 export async function POST(request: Request) {
-  const auth = await requireRole("partner");
+  const auth = await requirePartner({ trusted: true });
   if ("denied" in auth) return auth.denied;
   const { user } = auth;
 
