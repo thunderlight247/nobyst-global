@@ -46,23 +46,27 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
 
 - **Public catalogue** — `/products` and one detail page per product (`/products/<slug>`) with
   compatibility lists, bulk-order enquiries and related products. The sitemap updates automatically.
-- **Roles** — every account signs up as a `customer`. Admins change roles in **/admin → Users & Partners**
-  (an admin cannot change their own role, and a role change signs that account out at once).
+- **Roles** — every account signs up as a `customer`. Roles are changed in **/admin → Users & Partners**.
+  Nobody can change their own role, and a role change signs that account out at once.
 
   | Role | Can use |
   | --- | --- |
   | `customer` | Shop, checkout, `/account` order history |
-  | `partner` | Everything a customer can, plus `/partner`: wholesale price list, bulk requests, their own request history |
-  | `admin` | `/admin` (products, prices, wholesale, categories, page text, enquiries, orders, users) and a read-only preview of `/partner` |
+  | `partner` | Everything a customer can, plus `/partner`: wholesale price list, bulk requests, quotes |
+  | `admin` | `/admin` (products, prices, wholesale, categories, page text, enquiries, orders, partners, quotes); can switch accounts between customer and partner; read-only preview of `/partner` |
+  | `owner` | Everything an admin can, plus making, changing and removing admins and owners. The last owner cannot be demoted. |
 
-- **Admin** — `/admin` (not linked in navigation, hidden from search engines). Guests are sent to sign in;
-  other roles see an "access needed" page with no data. Make the **first** admin from the terminal after
-  signing up on `/account`:
+- **Sign-in pages** — staff sign in at `/admin/login` (no sign-up; a non-staff account gets the same
+  "Email or password is incorrect" as a wrong password), partners at `/partner/login`, customers at
+  `/account`. Each sends people to their own area afterwards and only follows `next` links inside it.
+- **Admin** — `/admin` (not linked in navigation, hidden from search engines). Guests are sent to
+  `/admin/login`; non-staff accounts see an "access needed" page with no data. Make the **first** owner
+  from the terminal after signing up on `/account`:
 
         npx wrangler d1 execute nobyst-catalog --remote \
-          --command "UPDATE users SET role = 'admin' WHERE email = 'you@example.com'"
+          --command "UPDATE users SET role = 'owner' WHERE email = 'you@example.com'"
 
-  After that, grant roles from the Users tab.
+  After that, the owner grants every other role from the Users tab.
 - **Partner portal** — `/partner`, linked from "Partner with us" and from a partner's account page.
   Wholesale prices are set per product in the admin product form and stored in their own
   `wholesale_prices` table, which public pages never read. Partners only see requests they sent while

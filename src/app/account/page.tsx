@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import AccountPanel, { SignOutButton } from "@/components/AccountPanel";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 import { listOrdersForUser } from "@/lib/orders";
 import { describeDelivery, fulfilmentLabel } from "@/lib/delivery";
 
@@ -49,7 +49,7 @@ export default async function AccountPage({
         <SignOutButton />
       </div>
 
-      {(user.role === "partner" || user.role === "admin") && (
+      {(user.role === "partner" || isStaff(user.role)) && (
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold/40 bg-gold-100/60 p-5">
           <p className="text-sm text-navy">
             {user.role === "partner"

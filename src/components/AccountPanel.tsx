@@ -17,10 +17,11 @@ async function post(url: string, body: unknown) {
   return { ok: res.ok, data };
 }
 
-export default function AccountPanel({ next = "/account" }: { next?: string }) {
+export default function AccountPanel({ next }: { next?: string }) {
   const router = useRouter();
   // Only same-site paths are allowed, to prevent open redirects.
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/account";
+  // A requested page wins; otherwise each role lands on its own home (admin, partner portal, account).
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : null;
   const [mode, setMode] = useState<Mode>("signin");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -48,7 +49,8 @@ export default function AccountPanel({ next = "/account" }: { next?: string }) {
       setError(res.error ?? "Something went wrong. Please try again.");
       return;
     }
-    router.push(safeNext);
+    const home = (res as { home?: string }).home;
+    router.push(safeNext ?? (mode === "signup" ? "/account" : home ?? "/account"));
     router.refresh();
   }
 

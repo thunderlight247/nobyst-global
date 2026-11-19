@@ -15,7 +15,16 @@ vi.mock("next/headers", () => ({
 }));
 
 import { hit } from "@/lib/rate-limit";
-import { createPasswordReset, createSession, getCurrentUser, hashPassword, resetPassword, verifyPassword } from "@/lib/auth";
+import {
+  createPasswordReset,
+  createSession,
+  getCurrentUser,
+  hashPassword,
+  resetPassword,
+  updateUserAccess,
+  verifyPassword,
+} from "@/lib/auth";
+import { POST as login } from "@/app/api/auth/login/route";
 import { acceptInvitation, createInvitation, findInvitation, revokeInvitation } from "@/lib/invitations";
 import { CheckoutError, createCheckout, createPartnerQuote, updateFulfilment, verifyCheckout } from "@/lib/orders";
 import { listPartnerCatalogue, parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
@@ -291,5 +300,78 @@ describe("product input validation", () => {
       expect((await parseProductInput({ ...base, model3dUrl })).ok).toBe(false);
     }
     expect((await parseProductInput({ ...base, model3dUrl: "https://cdn.example/m.glb" })).ok).toBe(true);
+  });
+});
+
+describe("owner rules against the database", () => {
+  beforeEach(async () => {
+    await seedUser(state.env, "owner1", "o1@example.com", "owner");
+    await seedUser(state.env, "admin1", "a1@example.com", "admin");
+    await seedUser(state.env, "cust", "c@example.com");
+  });
+  const owner = { id: "owner1", role: "owner" as const };
+  const admin = { id: "admin1", role: "admin" as const };
+
+  it("stops admins from creating or removing admins", async () => {
+    expect(await updateUserAccess(admin, "cust", "admin", null)).toMatchObject({ status: 403 });
+    expect(await updateUserAccess(admin, "owner1", "customer", null)).toMatchObject({ status: 403 });
+    expect(await updateUserAccess(admin, "cust", "partner", "Ama Ltd")).toMatchObject({ user: { role: "partner" } });
+  });
+
+  it("lets an owner promote, and protects the last owner", async () => {
+    expect(await updateUserAccess(owner, "admin1", "owner", null)).toMatchObject({ user: { role: "owner" } });
+    // Now two owners: one may demote the other, but not the last one left.
+    const second = { id: "admin1", role: "owner" as const };
+    expect(await updateUserAccess(second, "owner1", "admin", null)).toMatchObject({ user: { role: "admin" } });
+    expect(await updateUserAccess({ id: "owner1", role: "owner" }, "admin1", "admin", null)).toMatchObject({ status: 403 });
+    const owners = await state.env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner'").first<{ n: number }>();
+    expect(owners?.n).toBe(1);
+  });
+
+  it("signs the account out when its role changes", async () => {
+    await createSession("cust");
+    await updateUserAccess(owner, "cust", "admin", null);
+    const n = await state.env.DB.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = 'cust'").first<{ n: number }>();
+    expect(n?.n).toBe(0);
+  });
+});
+
+describe("area-aware sign-in", () => {
+  async function signIn(email: string, area?: string) {
+    const res = await login(
+      new Request("https://shop.test/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password: "pass-1234", area }),
+      })
+    );
+    return { status: res.status, body: (await res.json()) as { error?: string; home?: string } };
+  }
+
+  beforeEach(async () => {
+    const hash = await hashPassword("pass-1234");
+    for (const [id, email, role] of [["c", "c@example.com", "customer"], ["p", "p@example.com", "partner"], ["o", "o@example.com", "owner"]]) {
+      await state.env.DB.prepare("INSERT INTO users (id, email, name, password_hash, role) VALUES (?, ?, 'n', ?, ?)")
+        .bind(id, email, hash, role)
+        .run();
+    }
+  });
+
+  it("makes a customer on the admin page look exactly like a wrong password", async () => {
+    const wrongRole = await signIn("c@example.com", "admin");
+    const unknown = await signIn("nobody@example.com", "admin");
+    expect(wrongRole).toEqual(unknown);
+    expect(wrongRole.status).toBe(401);
+  });
+
+  it("tells a customer on the partner page they have no partner access", async () => {
+    expect(await signIn("c@example.com", "partner")).toMatchObject({ status: 403 });
+  });
+
+  it("signs staff and partners in and points them to their home", async () => {
+    expect(await signIn("o@example.com", "admin")).toEqual({ status: 200, body: { ok: true, home: "/admin" } });
+    expect((await signIn("p@example.com", "partner")).body.home).toBe("/partner");
+    expect((await signIn("p@example.com")).body.home).toBe("/partner");
+    expect((await signIn("c@example.com")).body.home).toBe("/account");
   });
 });

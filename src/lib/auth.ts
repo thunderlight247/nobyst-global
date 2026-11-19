@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getEnv } from "./cloudflare";
+import { isRole, isStaff, roleChangeError, type Role } from "./roles";
+
+export { ROLES, isRole, isStaff, type Role } from "./roles";
 
 export const SESSION_COOKIE = "nobyst_session";
 const SESSION_DAYS = 30;
@@ -9,13 +12,7 @@ const ADMIN_SESSION_HOURS = 12;
 const RESET_MINUTES = 60;
 const PBKDF2_ITERATIONS = 100_000;
 
-export type Role = "customer" | "partner" | "admin";
-export const ROLES: Role[] = ["customer", "partner", "admin"];
 export type CurrentUser = { id: string; email: string; name: string; role: Role; company: string | null };
-
-export function isRole(value: unknown): value is Role {
-  return typeof value === "string" && (ROLES as string[]).includes(value);
-}
 
 function toBase64(bytes: Uint8Array): string {
   let s = "";
@@ -86,12 +83,19 @@ export function normaliseEmail(email: string): string {
 
 export async function findUserByEmail(
   email: string
-): Promise<{ id: string; email: string; name: string; password_hash: string } | null> {
+): Promise<{ id: string; email: string; name: string; password_hash: string; role: Role } | null> {
   const { DB } = await getEnv();
-  const row = await DB.prepare("SELECT id, email, name, password_hash FROM users WHERE email = ?")
+  const row = await DB.prepare("SELECT * FROM users WHERE email = ?")
     .bind(normaliseEmail(email))
-    .first<{ id: string; email: string; name: string; password_hash: string }>();
-  return row ?? null;
+    .first<{ id: string; email: string; name: string; password_hash: string; role?: unknown }>();
+  if (!row) return null;
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    password_hash: row.password_hash,
+    role: isRole(row.role) ? row.role : "customer",
+  };
 }
 
 export async function createUser(email: string, name: string, password: string): Promise<CurrentUser> {
@@ -110,7 +114,8 @@ export async function createSession(userId: string): Promise<string> {
   const token = randomToken();
   const now = new Date();
   const role = await DB.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first<{ role?: unknown }>();
-  const lifetimeMs = role?.role === "admin" ? ADMIN_SESSION_HOURS * 3_600_000 : SESSION_DAYS * 86_400_000;
+  const staff = isRole(role?.role) && isStaff(role.role);
+  const lifetimeMs = staff ? ADMIN_SESSION_HOURS * 3_600_000 : SESSION_DAYS * 86_400_000;
   const expires = new Date(now.getTime() + lifetimeMs).toISOString();
   // Drop this user's expired sessions so old rows do not pile up.
   await DB.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?")
@@ -147,7 +152,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   // A session that began before the account became an admin still has a customer's 30-day life.
   // Cap it, so every admin session ends at most ADMIN_SESSION_HOURS from now.
   const adminCap = now + ADMIN_SESSION_HOURS * 3_600_000;
-  if (row.role === "admin" && Date.parse(row.session_expires_at) > adminCap) {
+  if (isRole(row.role) && isStaff(row.role) && Date.parse(row.session_expires_at) > adminCap) {
     await DB.prepare("UPDATE sessions SET expires_at = ? WHERE token_hash = ?")
       .bind(new Date(adminCap).toISOString(), tokenHash)
       .run();
@@ -161,10 +166,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   };
 }
 
-/** The signed-in admin, or null for guests and customers. */
+/** The signed-in admin or owner, or null for everyone else. */
 export async function getAdminUser(): Promise<CurrentUser | null> {
   const user = await getCurrentUser();
-  return user?.role === "admin" ? user : null;
+  return user && isStaff(user.role) ? user : null;
 }
 
 /**
@@ -179,13 +184,15 @@ export async function requireAdmin(): Promise<NextResponse | null> {
 /**
  * Guard for role-restricted handlers that also need the user. Returns `{ user }` when the caller
  * has one of `roles`, otherwise `{ denied }` holding the 401/403 response to send back.
+ * Owners pass wherever "admin" is allowed.
  */
 export async function requireRole(
   ...roles: Role[]
 ): Promise<{ user: CurrentUser } | { denied: NextResponse }> {
   const user = await getCurrentUser().catch(() => null);
   if (!user) return { denied: NextResponse.json({ error: "Please sign in." }, { status: 401 }) };
-  if (!roles.includes(user.role)) {
+  const allowed = roles.includes(user.role) || (user.role === "owner" && roles.includes("admin"));
+  if (!allowed) {
     return { denied: NextResponse.json({ error: "Not allowed." }, { status: 403 }) };
   }
   return { user };
@@ -205,7 +212,7 @@ export async function listUsers(): Promise<UserSummary[]> {
   const { DB } = await getEnv();
   const { results } = await DB.prepare(
     `SELECT id, email, name, role, company, created_at FROM users
-     ORDER BY CASE role WHEN 'admin' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END, created_at DESC
+     ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'partner' THEN 2 ELSE 3 END, created_at DESC
      LIMIT 500`
   ).all<{ id: string; email: string; name: string; role: string; company: string | null; created_at: string }>();
   return results.map((r) => ({
@@ -219,21 +226,40 @@ export async function listUsers(): Promise<UserSummary[]> {
 }
 
 /**
- * Changes an account's role and company. Signs the account out everywhere when its role changes,
- * so a removed admin or partner loses access immediately rather than at session expiry.
+ * Changes an account's role and company on behalf of `actor`, enforcing the owner rules in
+ * roles.ts. Signs the account out everywhere when its role changes, so a removed admin or partner
+ * loses access immediately rather than at session expiry.
  */
 export async function updateUserAccess(
+  actor: { id: string; role: Role },
   id: string,
   role: Role,
   company: string | null
-): Promise<UserSummary | null> {
+): Promise<{ user: UserSummary } | { error: string; status: number }> {
   const { DB } = await getEnv();
   const before = await DB.prepare("SELECT role FROM users WHERE id = ?").bind(id).first<{ role: string }>();
-  if (!before) return null;
-  await DB.prepare("UPDATE users SET role = ?, company = ? WHERE id = ?").bind(role, company, id).run();
-  if (before.role !== role) await DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id).run();
+  if (!before) return { error: "Account not found.", status: 404 };
+  const current: Role = isRole(before.role) ? before.role : "customer";
+
+  const owners = await DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner'").first<{ n: number }>();
+  const error = roleChangeError({ actor, target: { id, role: current }, next: role, ownerCount: owners?.n ?? 0 });
+  if (error) return { error, status: 403 };
+
+  // The owner-count condition is repeated in the UPDATE so two owners demoting each other at the
+  // same moment can never leave the site with none.
+  const res = await DB.prepare(
+    `UPDATE users SET role = ?, company = ? WHERE id = ?
+       AND (role != 'owner' OR ? = 'owner' OR (SELECT COUNT(*) FROM users WHERE role = 'owner') > 1)`
+  )
+    .bind(role, company, id, role)
+    .run();
+  if ((res.meta?.changes ?? 0) === 0) {
+    return { error: "This is the only owner. Make someone else an owner first.", status: 409 };
+  }
+  if (current !== role) await DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id).run();
   const users = await listUsers();
-  return users.find((u) => u.id === id) ?? null;
+  const user = users.find((u) => u.id === id);
+  return user ? { user } : { error: "Account not found.", status: 404 };
 }
 
 export function sessionCookieOptions() {

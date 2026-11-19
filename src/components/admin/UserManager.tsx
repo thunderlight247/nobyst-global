@@ -2,28 +2,25 @@
 
 import { useState } from "react";
 import { Search } from "lucide-react";
-import type { Role, UserSummary } from "@/lib/auth";
+import type { UserSummary } from "@/lib/auth";
+import { ROLE_LABELS, ROLES, roleChangeError, type Role } from "@/lib/roles";
 
 type Props = {
   initialUsers: UserSummary[];
-  currentUserId: string;
+  currentUser: { id: string; role: Role };
   onNotify: (message: string) => void;
-};
-
-const ROLE_LABELS: Record<Role, string> = {
-  customer: "Customer",
-  partner: "Partner",
-  admin: "Admin",
 };
 
 const ROLE_STYLES: Record<Role, string> = {
   customer: "bg-slate-100 text-slate-700",
   partner: "bg-amber-100 text-amber-800",
   admin: "bg-navy text-white",
+  owner: "bg-gold text-navy",
 };
 
 /** Admin-only list of accounts where roles and partner company names are granted or removed. */
-export default function UserManager({ initialUsers, currentUserId, onNotify }: Props) {
+export default function UserManager({ initialUsers, currentUser, onNotify }: Props) {
+  const currentUserId = currentUser.id;
   const [users, setUsers] = useState(initialUsers);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -32,6 +29,7 @@ export default function UserManager({ initialUsers, currentUserId, onNotify }: P
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const ownerCount = users.filter((u) => u.role === "owner").length;
   const q = query.trim().toLowerCase();
   const shown = users.filter(
     (u) =>
@@ -49,9 +47,11 @@ export default function UserManager({ initialUsers, currentUserId, onNotify }: P
   }
 
   async function save(user: UserSummary) {
-    if (draftRole === "admin" && user.role !== "admin") {
+    if ((draftRole === "admin" || draftRole === "owner") && draftRole !== user.role) {
       const ok = window.confirm(
-        `Give ${user.email} full admin access? They will be able to change products, prices, orders and other accounts.`
+        draftRole === "owner"
+          ? `Make ${user.email} an owner? Owners can add and remove admins and other owners.`
+          : `Give ${user.email} admin access? They will be able to change products, prices, orders, partners and quotes.`
       );
       if (!ok) return;
     }
@@ -81,8 +81,8 @@ export default function UserManager({ initialUsers, currentUserId, onNotify }: P
       <h1 className="font-display text-2xl font-extrabold text-navy sm:text-3xl">Users &amp; roles</h1>
       <p className="mt-1 max-w-2xl text-xs text-navy/60">
         Everyone signs up as a customer. Make an account a <strong>partner</strong> to open the partner
-        portal (wholesale prices and their own bulk requests), or an <strong>admin</strong> for this
-        dashboard. Changing a role signs that account out so the change applies straight away.
+        portal (wholesale prices and their own bulk requests). Only an <strong>owner</strong> can make
+        someone an admin or owner. Changing a role signs that account out so it applies straight away.
       </p>
 
       <div className="relative mt-6 max-w-md">
@@ -141,9 +141,15 @@ export default function UserManager({ initialUsers, currentUserId, onNotify }: P
                       onChange={(e) => setDraftRole(e.target.value as Role)}
                       className="mt-1 min-h-[40px] w-full rounded-lg border border-navy/20 bg-white px-2 text-sm disabled:opacity-60"
                     >
-                      <option value="customer">Customer</option>
-                      <option value="partner">Partner</option>
-                      <option value="admin">Admin</option>
+                      {ROLES.filter(
+                        (r) =>
+                          r === u.role ||
+                          !roleChangeError({ actor: currentUser, target: u, next: r, ownerCount: ownerCount })
+                      ).map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_LABELS[r]}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   <label className="text-xs font-bold text-navy">
@@ -175,7 +181,12 @@ export default function UserManager({ initialUsers, currentUserId, onNotify }: P
                   </div>
                   {isSelf && (
                     <p className="text-[11px] text-navy/55 sm:col-span-3">
-                      You cannot change your own role. Another admin can.
+                      You cannot change your own role. An owner can.
+                    </p>
+                  )}
+                  {!isSelf && currentUser.role !== "owner" && (u.role === "admin" || u.role === "owner") && (
+                    <p className="text-[11px] text-navy/55 sm:col-span-3">
+                      Only an owner can change an admin or owner. You can still edit the company name.
                     </p>
                   )}
                   {error && <p className="text-xs font-bold text-rose-600 sm:col-span-3">{error}</p>}

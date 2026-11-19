@@ -10,6 +10,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { canEnterArea, homeFor, type Area } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export async function POST(request: Request) {
   }
 
   const email = typeof body.email === "string" ? body.email : "";
+  // Which sign-in page this came from. Each area admits only the roles that belong there.
+  const area: Area = body.area === "admin" || body.area === "partner" ? body.area : "customer";
   const password = typeof body.password === "string" ? body.password : "";
   const invalid = NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
 
@@ -41,7 +44,17 @@ export async function POST(request: Request) {
   }
   if (!(await verifyPassword(password, user.password_hash))) return invalid;
 
+  if (!canEnterArea(user.role, area)) {
+    // The admin page never confirms that an email has an account: wrong role looks exactly like
+    // a wrong password. A partner applicant with a correct password is told where to go instead.
+    if (area === "admin") return invalid;
+    return NextResponse.json(
+      { error: "This account does not have partner access yet. Apply to partner with us, or sign in on My account." },
+      { status: 403 }
+    );
+  }
+
   const token = await createSession(user.id);
   (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions());
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, home: homeFor(user.role) });
 }

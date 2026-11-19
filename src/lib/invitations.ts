@@ -103,7 +103,7 @@ export async function findInvitation(token: string): Promise<Invitation | null> 
 /**
  * Marks the invitation used and makes the account a partner, in that order, so a link can only
  * ever be redeemed once even under concurrent requests. The account's email must match the
- * invitation. Admins keep their admin role and just gain the company name.
+ * invitation. Admins and owners keep their role and just gain the company name.
  */
 export async function acceptInvitation(
   token: string,
@@ -131,7 +131,7 @@ export async function acceptInvitation(
   }
 
   await DB.prepare(
-    "UPDATE users SET role = CASE WHEN role = 'admin' THEN 'admin' ELSE 'partner' END, company = ? WHERE id = ?"
+    "UPDATE users SET role = CASE WHEN role IN ('admin', 'owner') THEN role ELSE 'partner' END, company = ? WHERE id = ?"
   )
     .bind(claimed.company, user.id)
     .run();

@@ -92,6 +92,7 @@ export default async function InvitePage({
           come straight back here to accept.
         </p>
         <Link
+          // /account, not /partner/login: the invitee is still a customer until they accept.
           href={`/account?next=${encodeURIComponent(next)}`}
           className="inline-flex min-h-[44px] items-center rounded-full bg-navy px-6 py-2.5 text-sm font-bold text-white hover:bg-royal"
         >

@@ -73,7 +73,7 @@ export default function Partnerships() {
           <EnquiryForm />
           <p className="mt-4 text-center text-sm text-navy/70">
             Already an approved partner?{" "}
-            <a href="/partner" className="font-bold text-royal underline">
+            <a href="/partner/login" className="font-bold text-royal underline">
               Sign in to the partner portal
             </a>
           </p>

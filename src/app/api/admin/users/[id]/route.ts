@@ -13,13 +13,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!body) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
 
   if (!isRole(body.role)) return NextResponse.json({ error: "Choose a valid role." }, { status: 400 });
-  // An admin cannot change their own role, so the last admin can never lock everyone out.
-  if (id === auth.user.id && body.role !== auth.user.role) {
-    return NextResponse.json(
-      { error: "You cannot change your own role. Ask another admin." },
-      { status: 400 }
-    );
-  }
 
   const company = typeof body.company === "string" ? body.company.trim().slice(0, 120) || null : null;
   if (body.role === "partner" && !company) {
@@ -27,9 +20,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   try {
-    const user = await updateUserAccess(id, body.role, company);
-    if (!user) return NextResponse.json({ error: "Account not found." }, { status: 404 });
-    return NextResponse.json({ user });
+    // Owner rules (only owners manage admins; the last owner is protected) live in roles.ts.
+    const result = await updateUserAccess(auth.user, id, body.role, company);
+    if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ user: result.user });
   } catch (error) {
     console.error("Could not update user", error);
     return NextResponse.json({ error: "Could not update the account." }, { status: 500 });

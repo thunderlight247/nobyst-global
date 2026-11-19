@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/AccountPanel";
-import { getCurrentUser, listUsers } from "@/lib/auth";
+import { getCurrentUser, isStaff, listUsers } from "@/lib/auth";
 import { listWholesalePrices } from "@/lib/wholesale";
 import { listInvitations } from "@/lib/invitations";
 import { listProducts } from "@/lib/products";
@@ -26,9 +26,13 @@ export default async function PayloadAdminPage({
 }) {
   // Admins only. Guests are sent to sign in; signed-in non-admins see who they are signed in as
   // and how to get access, but no admin data. The API routes enforce the same check independently.
+  const segs = (await params).segments;
   const user = await getCurrentUser().catch(() => null);
-  if (!user) redirect("/account?next=/admin");
-  if (user.role !== "admin") {
+  if (!user) {
+    const path = segs?.length ? `/admin/${segs.join("/")}` : "/admin";
+    redirect(`/admin/login?next=${encodeURIComponent(path)}`);
+  }
+  if (!isStaff(user.role)) {
     return (
       <main className="mx-auto max-w-lg px-5 py-20 text-center sm:px-6">
         <h1 className="text-2xl font-extrabold text-navy sm:text-3xl">Admin access needed</h1>
@@ -61,7 +65,7 @@ export default async function PayloadAdminPage({
     listInvitations(),
   ]);
 
-  const activeCollection = (await params).segments?.[0] || "dashboard";
+  const activeCollection = segs?.[0] || "dashboard";
 
   return (
     <main className="min-h-screen bg-slate-50 text-navy antialiased">
@@ -76,7 +80,7 @@ export default async function PayloadAdminPage({
         initialUsers={users}
         initialWholesale={wholesale}
         initialInvitations={invitations}
-        currentUser={{ id: user.id, email: user.email }}
+        currentUser={{ id: user.id, email: user.email, role: user.role }}
       />
     </main>
   );

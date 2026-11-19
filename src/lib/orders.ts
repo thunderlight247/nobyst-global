@@ -414,7 +414,7 @@ export async function createPartnerQuote(input: {
   const enquiry = await env.DB.prepare(
     `SELECT e.id, e.user_id, e.product_name, e.phone, u.email, u.name, u.company
      FROM enquiries e JOIN users u ON u.id = e.user_id
-     WHERE e.id = ? AND u.role IN ('partner', 'admin')`
+     WHERE e.id = ? AND u.role IN ('partner', 'admin', 'owner')`
   )
     .bind(input.enquiryId)
     .first<{ id: string; user_id: string; product_name: string | null; phone: string | null; email: string; name: string; company: string | null }>();

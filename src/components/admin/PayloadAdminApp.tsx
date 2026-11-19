@@ -41,6 +41,7 @@ import ContentEditor from "@/components/admin/ContentEditor";
 import type { ContentValues } from "@/lib/content-blocks";
 import UserManager from "@/components/admin/UserManager";
 import type { UserSummary } from "@/lib/auth";
+import { ROLE_LABELS, type Role } from "@/lib/roles";
 import type { WholesalePrice } from "@/lib/wholesale";
 import type { Invitation } from "@/lib/invitations";
 import PartnerInvitations, { InviteDialog, type InviteDraft } from "@/components/admin/PartnerInvitations";
@@ -56,7 +57,7 @@ type Props = {
   initialUsers: UserSummary[];
   initialWholesale: Record<string, WholesalePrice>;
   initialInvitations: Invitation[];
-  currentUser: { id: string; email: string };
+  currentUser: { id: string; email: string; role: Role };
 };
 
 export default function PayloadAdminApp({
@@ -246,7 +247,7 @@ export default function PayloadAdminApp({
         </nav>
 
         <div className="m-4 mt-auto rounded-xl border border-white/10 bg-white/5 p-3 text-xs">
-          <span className="text-white/60">Signed in as admin</span>
+          <span className="text-white/60">Signed in as {ROLE_LABELS[currentUser.role].toLowerCase()}</span>
           <p className="mt-0.5 truncate font-bold text-white">{currentUser.email}</p>
           <Link href="/partner" className="mt-2 inline-block text-[11px] font-bold text-gold hover:underline">
             Preview partner portal →
@@ -648,7 +649,7 @@ export default function PayloadAdminApp({
               }
               onNotify={notify}
             />
-            <UserManager initialUsers={initialUsers} currentUserId={currentUser.id} onNotify={notify} />
+            <UserManager initialUsers={initialUsers} currentUser={currentUser} onNotify={notify} />
           </div>
         )}
 

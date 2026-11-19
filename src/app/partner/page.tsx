@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Handshake } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 import { listEnquiriesForUser } from "@/lib/enquiries";
 import { listOpenQuotesForUser, listOrdersForUser } from "@/lib/orders";
 import { fulfilmentLabel } from "@/lib/delivery";
@@ -30,9 +30,9 @@ const STATUS_LABELS: Record<string, string> = {
  */
 export default async function PartnerPortal() {
   const user = await getCurrentUser().catch(() => null);
-  if (!user) redirect("/account?next=/partner");
+  if (!user) redirect("/partner/login");
 
-  if (user.role !== "partner" && user.role !== "admin") {
+  if (user.role !== "partner" && !isStaff(user.role)) {
     return (
       <section className="mx-auto max-w-lg px-5 py-20 text-center sm:px-6">
         <Handshake className="mx-auto text-royal" size={44} aria-hidden />
@@ -55,7 +55,7 @@ export default async function PartnerPortal() {
     );
   }
 
-  const preview = user.role === "admin";
+  const preview = isStaff(user.role);
   const [catalogue, requests, orders, quotes] = await Promise.all([
     listPartnerCatalogue(),
     preview ? Promise.resolve([]) : listEnquiriesForUser(user.id).catch(() => []),

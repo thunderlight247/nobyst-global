@@ -1,6 +1,6 @@
 # Admin and partner sign-in plan
 
-Status: **planned, not built.** Decisions made on 2026-11-19:
+Status: **Phase 1 built (2026-11-19); Phases 2–4 planned.** Decisions made on 2026-11-19:
 authenticator-app 2FA, required for admins and optional for partners; an owner role above admin;
 re-confirmation before risky actions; separate sign-in pages; a security log.
 
@@ -11,7 +11,7 @@ tokens, 12-hour admin sessions, role checks on every admin and partner API, part
 invitation. Gaps: no second factor, any admin can manage every other admin, no record of who did
 what, and admins, partners and customers share one sign-in page.
 
-## Phase 1: owner role and separate sign-in pages
+## Phase 1: owner role and separate sign-in pages (done)
 
 - **Roles:** `customer` < `partner` < `admin` < `owner`. Owners can do everything admins can.
   - Only an owner can make someone an admin or owner, or remove those roles.
