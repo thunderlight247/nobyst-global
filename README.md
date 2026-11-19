@@ -10,7 +10,7 @@ Next.js 15 (App Router, React 19), TypeScript, Tailwind CSS, Lenis smooth scroll
     npm run db:init && npm run db:seed   # create and fill the local database
     npm run typecheck && npm run lint
     npm test             # unit tests (Vitest, real SQL on an in-memory SQLite copy of the schema)
-    npm run check        # typecheck + lint + tests, the same checks CI runs
+    npm run check        # typecheck + lint + tests; run before every commit
     npm run build        # plain Next.js build
     npm run worker:build # OpenNext worker bundle in .open-next
     npm run deploy       # worker:build + deploy to the nobyst-global worker
@@ -205,13 +205,13 @@ current account's `database_id`, or the build deploys against a database that do
 - **Admin → Wholesale** sets partner prices for every product in one table.
 - **Admin sessions** last 12 hours; customer sessions 30 days.
 
-## Testing and CI
+## Testing
 
 - `npm test` runs Vitest. `tests/helpers/d1.ts` loads `db/schema.sql` and every migration into an
   in-memory SQLite database behind the same API as D1, so tests exercise the real SQL (rate limits,
   single-use tokens, checkout pricing, payment verification, quotes, CSRF and upload checks).
-- `.github/workflows/ci.yml` runs typecheck, lint, tests and a Next build on every pull request and
-  push to `main`. Workers Builds still performs the deploy.
+- There is no GitHub Actions workflow: run `npm run check` locally before committing. Deploys come
+  from Workers Builds (on push to `main`) or `npm run deploy`.
 - `npm run preview` builds and uploads a **preview version** without promoting it (Wrangler prints
   its URL). It uses the **production** D1 and R2 bindings, so treat it as live data; a separate
   staging environment is in `ROADMAP.md`.

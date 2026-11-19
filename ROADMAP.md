@@ -46,7 +46,7 @@ Work deliberately left for later, roughly in priority order. Each item says why 
 - **Separate staging environment.** `npm run preview` uploads a preview version, but it uses the
   production D1 database and R2 bucket. Create `nobyst-catalog-staging` / `nobyst-media-staging`
   and a `[env.staging]` block in `wrangler.jsonc` before using previews for risky changes.
-- **Browser smoke tests in CI** (Playwright against `next dev` with a local D1), covering checkout,
+- **Browser smoke tests** (Playwright against `next dev` with a local D1), covering checkout,
   sign-in, admin and partner pages. Unit tests already cover the server rules.
 - **Next.js 16.** The site is on 15.5 (supported). 16 removes `next lint` (migrate with
   `npx @next/codemod@canary next-lint-to-eslint-cli .`) and renames middleware to proxy.
