@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { publicOrigin } from "@/lib/email";
 import { CheckoutError, createPartnerQuote } from "@/lib/orders";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { requireRecentAuth } from "@/lib/reauth";
 
 // Admin only: every handler checks the signed-in user's role before doing anything.
 export const dynamic = "force-dynamic";
@@ -33,6 +34,9 @@ export async function POST(request: Request) {
   if (unitPesewas * quantity > 100_000_000) {
     return NextResponse.json({ error: "That total is above GH₵1,000,000. Split it into smaller quotes." }, { status: 400 });
   }
+
+  const stale = await requireRecentAuth();
+  if (stale) return stale;
 
   try {
     const order = await createPartnerQuote({ enquiryId, unitPesewas, quantity, note, origin: await publicOrigin(request) });

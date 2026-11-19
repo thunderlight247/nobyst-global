@@ -1,6 +1,6 @@
 # Admin and partner sign-in plan
 
-Status: **Phases 1 and 2 built (2026-11-19); Phases 3–4 planned.** Decisions made on 2026-11-19:
+Status: **Phases 1–3 built (2026-11-19); Phase 4 planned.** Decisions made on 2026-11-19:
 authenticator-app 2FA, required for admins and optional for partners; an owner role above admin;
 re-confirmation before risky actions; separate sign-in pages; a security log.
 
@@ -64,7 +64,7 @@ Built as planned, with two adjustments: only wrong codes count towards the 5-cod
 code clears it), and a recovery code can't be used to issue new recovery codes (that needs an
 authenticator code). The `created_at` and `reauth_at` session columns move to Phases 3–4.
 
-## Phase 3: re-confirm risky actions
+## Phase 3: re-confirm risky actions (done)
 
 - `sessions.reauth_at` records the last time the person re-entered their password (+ 2FA code if enabled).
 - These actions require a re-confirmation within the last 15 minutes:
@@ -74,6 +74,9 @@ authenticator code). The `created_at` and `reauth_at` session columns move to Ph
   - Turning 2FA off, or resetting someone else's 2FA
 - If it's older, the API answers `403 { reauth: true }`. The admin page shows a small "Confirm
   it's you" dialog, calls `POST /api/auth/reauth`, then retries the action automatically.
+
+Built as planned. Turning 2FA off and new recovery codes already require a code, so they are not
+behind the extra dialog. Migration `0014_reauth.sql` adds `sessions.reauth_at`.
 
 ## Phase 4: security log
 

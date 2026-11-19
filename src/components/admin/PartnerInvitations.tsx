@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Mail, Send, X } from "lucide-react";
 import type { Invitation, InvitationStatus } from "@/lib/invitations";
 import { suggestEmail } from "@/lib/email-check";
+import { adminFetch } from "@/components/admin/reauth";
 
 export type InviteDraft = { email: string; name: string; company: string; enquiryId: string | null };
 
@@ -40,7 +41,7 @@ export function InviteDialog({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/invitations", {
+      const res = await adminFetch("/api/admin/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, name, company, enquiryId: draft.enquiryId }),
@@ -131,7 +132,7 @@ export default function PartnerInvitations({
 }) {
   async function revoke(inv: Invitation) {
     if (!window.confirm(`Cancel the invitation for ${inv.email}? The link will stop working.`)) return;
-    const res = await fetch(`/api/admin/invitations/${inv.id}`, { method: "DELETE" });
+    const res = await adminFetch(`/api/admin/invitations/${inv.id}`, { method: "DELETE" });
     if (res.ok) {
       onRevoked(inv.id);
       onNotify(`Invitation for ${inv.email} cancelled.`);

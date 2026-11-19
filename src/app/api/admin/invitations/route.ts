@@ -4,6 +4,7 @@ import { publicOrigin } from "@/lib/email";
 import { createInvitation, listInvitations, revokeInvitation, sendInvitationEmail } from "@/lib/invitations";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { domainAcceptsMail, suggestEmail } from "@/lib/email-check";
+import { requireRecentAuth } from "@/lib/reauth";
 
 // Admin only: every handler checks the signed-in user's role before doing anything.
 export const dynamic = "force-dynamic";
@@ -47,6 +48,9 @@ export async function POST(request: Request) {
   }
   if (name.length < 2) return NextResponse.json({ error: "Enter the contact's name." }, { status: 400 });
   if (company.length < 2) return NextResponse.json({ error: "Enter the partner's company name." }, { status: 400 });
+
+  const stale = await requireRecentAuth();
+  if (stale) return stale;
 
   try {
     const { invitation, token } = await createInvitation({

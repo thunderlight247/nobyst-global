@@ -71,6 +71,12 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
   Secrets are AES-GCM encrypted with the worker secret `TOTP_ENCRYPTION_KEY`
   (`openssl rand -base64 32 | npx wrangler secret put TOTP_ENCRYPTION_KEY`; locally in `.dev.vars`).
   Changing that key makes every existing authenticator stop working.
+- **Confirm it's you** — changing roles, resetting someone's 2FA, inviting or cancelling a partner
+  and sending a quote need the password and a 2FA code from the last 15 minutes. Signing in with
+  the code counts; otherwise the admin shows a "Confirm it's you" box and then retries the action.
+  Five wrong tries lock it for 15 minutes.
+- **Invitation addresses** are checked before sending: the invite box suggests fixes for common
+  typos (`gmail.coom` → `gmail.com`), and the server refuses domains that cannot receive email.
 - **Admin** — `/admin` (not linked in navigation, hidden from search engines). Guests are sent to
   `/admin/login`; non-staff accounts see an "access needed" page with no data. Make the **first** owner
   from the terminal after signing up on `/account`:
@@ -138,7 +144,8 @@ unchanged).
    `0008_security.sql` adds admin roles and rate limits, `0009_partners.sql` the partner portal,
    `0010_partner_invitations.sql` email invitations, `0011_order_fulfilment.sql` delivery details,
    order statuses and partner quotes, and `0012_clear_placeholder_prices.sql` removes the test prices
-   from 0007, and `0013_two_factor.sql` adds two-step sign-in. Until they run, nobody can open the admin or the partner portal.
+   from 0007, `0013_two_factor.sql` adds two-step sign-in and
+   `0014_reauth.sql` the "Confirm it's you" timestamp. Until they run, nobody can open the admin or the partner portal.
    (`0002` is already part of `schema.sql` on new databases.)
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is

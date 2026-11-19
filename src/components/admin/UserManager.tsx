@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import type { UserSummary } from "@/lib/auth";
+import { adminFetch } from "@/components/admin/reauth";
 import { ROLE_LABELS, ROLES, roleChangeError, type Role } from "@/lib/roles";
 
 type Props = {
@@ -53,7 +54,7 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
       }.`
     );
     if (!ok) return;
-    const res = await fetch(`/api/admin/users/${user.id}/two-factor`, { method: "DELETE" });
+    const res = await adminFetch(`/api/admin/users/${user.id}/two-factor`, { method: "DELETE" });
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) return onNotify(data.error ?? "Could not reset two-step sign-in.");
     setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, twoFactorEnabled: false } : u)));
@@ -72,7 +73,7 @@ export default function UserManager({ initialUsers, currentUser, onNotify }: Pro
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
+      const res = await adminFetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: draftRole, company: draftCompany }),

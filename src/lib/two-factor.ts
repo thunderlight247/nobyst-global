@@ -2,6 +2,7 @@ import { getEnv } from "./cloudflare";
 import { randomToken, sha256Hex } from "./auth";
 import { openSecret, sealSecret } from "./secret-box";
 import { generateSecret, matchTotp, otpauthUri } from "./totp";
+import { markReauthenticated } from "./reauth";
 
 /**
  * Two-step sign-in with an authenticator app. Required for admins and owners (enforced in
@@ -157,6 +158,8 @@ export async function markSessionVerified(sessionHash: string): Promise<void> {
   await DB.prepare("UPDATE sessions SET mfa_verified_at = datetime('now') WHERE token_hash = ?")
     .bind(sessionHash)
     .run();
+  // Passing the code step also counts as a fresh "it's me" confirmation for risky actions.
+  await markReauthenticated(sessionHash);
 }
 
 /** Turns 2FA off for an account (partner choice, or an owner's reset) and signs it out everywhere. */

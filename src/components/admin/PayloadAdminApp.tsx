@@ -40,6 +40,7 @@ import CategoryEditor from "@/components/admin/CategoryEditor";
 import ContentEditor from "@/components/admin/ContentEditor";
 import type { ContentValues } from "@/lib/content-blocks";
 import UserManager from "@/components/admin/UserManager";
+import { ReauthHost } from "@/components/admin/reauth";
 import type { UserSummary } from "@/lib/auth";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
 import type { WholesalePrice } from "@/lib/wholesale";
@@ -913,6 +914,7 @@ export default function PayloadAdminApp({
           onClose={() => setEditingProduct(null)}
         />
       )}
+      <ReauthHost />
     </div>
   );
 }

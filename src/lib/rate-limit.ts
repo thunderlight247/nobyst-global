@@ -84,4 +84,6 @@ export const LIMITS = {
   // Wrong 2FA codes: 5 per account per 15 minutes, then code entry is locked until the window ends.
   twoFactorVerifyUser: { limit: 5, windowSeconds: 15 * 60 },
   twoFactorSetupUser: { limit: 20, windowSeconds: 60 * 60 },
+  // "Confirm it's you": 5 wrong password/code tries per account per 15 minutes.
+  reauthUser: { limit: 5, windowSeconds: 15 * 60 },
 } satisfies Record<string, Limit>;

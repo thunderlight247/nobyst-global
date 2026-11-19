@@ -5,6 +5,7 @@ import { Send, X } from "lucide-react";
 import type { Enquiry } from "@/lib/enquiries";
 import type { OrderSummary } from "@/lib/orders";
 import { formatPrice } from "@/lib/catalogue";
+import { adminFetch } from "@/components/admin/reauth";
 
 const field =
   "mt-1 min-h-[42px] w-full rounded-lg border border-navy/20 bg-white px-3 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20";
@@ -34,7 +35,7 @@ export default function QuoteDialog({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/quotes", {
+      const res = await adminFetch("/api/admin/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enquiryId: enquiry.id, unitPrice, quantity: Number(quantity), note }),

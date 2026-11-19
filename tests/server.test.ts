@@ -31,6 +31,9 @@ import { POST as disable2fa } from "@/app/api/auth/two-factor/disable/route";
 import { requireAdmin, getPendingUser } from "@/lib/auth";
 import { beginSetup, confirmSetup, getTwoFactorStatus, verifySecondStep } from "@/lib/two-factor";
 import { hotp, stepAt } from "@/lib/totp";
+import { requireRecentAuth } from "@/lib/reauth";
+import { POST as reauth } from "@/app/api/auth/reauth/route";
+import { PATCH as patchUser } from "@/app/api/admin/users/[id]/route";
 import { acceptInvitation, createInvitation, findInvitation, revokeInvitation } from "@/lib/invitations";
 import { CheckoutError, createCheckout, createPartnerQuote, updateFulfilment, verifyCheckout } from "@/lib/orders";
 import { listPartnerCatalogue, parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
@@ -522,5 +525,69 @@ describe("two-step sign-in", () => {
     await state.env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = 'p'").bind(await hashPassword("pass-1234")).run();
     const res = await login(json({ email: "p@example.com", password: "pass-1234", area: "partner" }));
     expect(await res.json()).toEqual({ ok: true, home: "/partner", twoFactorRequired: true });
+  });
+});
+
+describe("confirm it's you", () => {
+  const json = (body: unknown) =>
+    new Request("https://shop.test/x", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const hashOf = async (token: string) => {
+    const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, "0")).join("");
+  };
+
+  /** An owner with 2FA, signed in on a session that has passed the code step. */
+  async function owner() {
+    await state.env.DB.prepare("INSERT INTO users (id, email, name, password_hash, role) VALUES ('o', 'o@example.com', 'O', ?, 'owner')")
+      .bind(await hashPassword("pass-1234"))
+      .run();
+    const token = await createSession("o");
+    state.cookie = token;
+    const { secret } = (await beginSetup({ id: "o", email: "o@example.com" }))!;
+    await confirmSetup("o", await hotp(secret, stepAt(Date.now())), await hashOf(token));
+    return { secret, token };
+  }
+  const age = (minutes: number) =>
+    state.env.DB.prepare("UPDATE sessions SET reauth_at = ?").bind(new Date(Date.now() - minutes * 60_000).toISOString()).run();
+
+  it("counts signing in with the code as confirmed, for 15 minutes", async () => {
+    await owner();
+    expect(await requireRecentAuth()).toBeNull();
+    await age(16);
+    const denied = await requireRecentAuth();
+    expect(denied?.status).toBe(403);
+    expect(await denied?.json()).toMatchObject({ reauthRequired: true });
+  });
+
+  it("needs the password and a fresh code to confirm", async () => {
+    const { secret } = await owner();
+    await age(16);
+    const next = await hotp(secret, stepAt(Date.now()) + 1);
+    expect((await reauth(json({ password: "wrong", code: next }))).status).toBe(400);
+    expect((await reauth(json({ password: "pass-1234", code: "000000" }))).status).toBe(400);
+    expect((await reauth(json({ password: "pass-1234", code: next }))).status).toBe(200);
+    expect(await requireRecentAuth()).toBeNull();
+  });
+
+  it("locks confirmation after 5 wrong tries", async () => {
+    await owner();
+    const statuses = [];
+    for (let i = 0; i < 6; i++) statuses.push((await reauth(json({ password: "wrong", code: "000000" }))).status);
+    expect(statuses[5]).toBe(429);
+  });
+
+  it("refuses a role change until the owner confirms, then allows it", async () => {
+    const { secret } = await owner();
+    await seedUser(state.env, "c", "c@example.com");
+    await age(16);
+    const change = () =>
+      patchUser(new Request("https://shop.test/x", { method: "PATCH", body: JSON.stringify({ role: "partner", company: "Co" }) }), {
+        params: Promise.resolve({ id: "c" }),
+      });
+    const first = await change();
+    expect(first.status).toBe(403);
+    expect(await first.json()).toMatchObject({ reauthRequired: true });
+    await reauth(json({ password: "pass-1234", code: await hotp(secret, stepAt(Date.now()) + 1) }));
+    expect((await change()).status).toBe(200);
   });
 });

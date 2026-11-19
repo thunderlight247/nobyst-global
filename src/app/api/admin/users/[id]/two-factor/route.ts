@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { removeTwoFactor } from "@/lib/two-factor";
+import { requireRecentAuth } from "@/lib/reauth";
 
 // Owner only. Used when someone has lost their phone and their recovery codes.
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (id === auth.user.id) {
     return NextResponse.json({ error: "Use one of your recovery codes, or ask another owner." }, { status: 400 });
   }
+  const stale = await requireRecentAuth();
+  if (stale) return stale;
   await removeTwoFactor(id);
   return NextResponse.json({ ok: true });
 }
