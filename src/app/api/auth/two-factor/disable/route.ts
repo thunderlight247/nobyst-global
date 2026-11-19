@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentSessionHash, getCurrentUser, isStaff } from "@/lib/auth";
 import { removeTwoFactor, verifySecondStep } from "@/lib/two-factor";
 import { clearLimit, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { logActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -22,5 +23,6 @@ export async function POST(request: Request) {
   }
   await clearLimit(`2fa:verify:${user.id}`);
   await removeTwoFactor(user.id, sessionHash);
+  await logActivity({ actor: { id: user.id, email: user.email, role: user.role }, action: "2fa.disabled", entityId: user.id, summary: `${user.email} turned off two-step sign-in`, request });
   return NextResponse.json({ ok: true });
 }

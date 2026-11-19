@@ -3,6 +3,7 @@ import { createPasswordReset, findUserByEmail, normaliseEmail } from "@/lib/auth
 import { getEnv } from "@/lib/cloudflare";
 import { escapeHtml, sendEmail } from "@/lib/email";
 import { clientIp, hit, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { logActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
   const user = await findUserByEmail(email);
   if (user) {
     const token = await createPasswordReset(user.id);
+    await logActivity({ actor: null, actorEmail: user.email, action: "auth.reset_requested", entityId: user.id, summary: `Password reset link emailed to ${user.email}`, request });
     const { SITE_URL } = await getEnv();
     // Prefer the configured origin so a spoofed Host header cannot redirect reset links.
     const origin = SITE_URL || new URL(request.url).origin;

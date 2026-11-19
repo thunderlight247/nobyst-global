@@ -10,6 +10,7 @@ import {
 import { parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
+import { formatPrice } from "@/lib/catalogue";
 
 export const dynamic = "force-dynamic";
 
@@ -43,16 +44,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (raw && typeof raw === "object" && "wholesalePrice" in raw) {
       await saveWholesalePrice(product.id, wholesale.value);
     }
-    if (previous.partnerId) {
-      const admin = await getCurrentUser();
-      await logActivity({
-        actor: admin ? { id: admin.id, email: admin.email, role: admin.role } : null,
-        partnerId: previous.partnerId,
-        action: "product.admin_edit",
-        entityId: id,
-        summary: `${admin?.email ?? "An admin"} edited “${product.name}” from ${previous.partnerName}`,
-      });
+    // Every admin edit is on the record, with price and stock changes spelled out.
+    const admin = await getCurrentUser();
+    const changes: string[] = [];
+    if (previous.pricePesewas !== product.pricePesewas) {
+      changes.push(`price ${formatPrice(previous.pricePesewas) ?? "not set"} → ${formatPrice(product.pricePesewas) ?? "not set"}`);
     }
+    if (previous.stockStatus !== product.stockStatus) changes.push(`stock ${previous.stockStatus} → ${product.stockStatus}`);
+    if (previous.name !== product.name) changes.push(`renamed from “${previous.name}”`);
+    await logActivity({
+      actor: admin ? { id: admin.id, email: admin.email, role: admin.role } : null,
+      partnerId: previous.partnerId,
+      action: "product.admin_edit",
+      entityId: id,
+      summary: `${admin?.email ?? "An admin"} edited “${product.name}”${previous.partnerName ? ` from ${previous.partnerName}` : ""}${changes.length ? `: ${changes.join(", ")}` : ""}`,
+      request,
+    });
     return NextResponse.json({ product });
   } catch (error) {
     console.error("Could not update product", error);
@@ -68,14 +75,15 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const existing = await getProductById(id);
     const deleted = await deleteProduct(id);
     if (!deleted) return NextResponse.json({ error: "Product not found." }, { status: 404 });
-    if (existing?.partnerId) {
+    if (existing) {
       const admin = await getCurrentUser();
       await logActivity({
         actor: admin ? { id: admin.id, email: admin.email, role: admin.role } : null,
         partnerId: existing.partnerId,
         action: "product.admin_delete",
         entityId: id,
-        summary: `${admin?.email ?? "An admin"} deleted “${existing.name}” from ${existing.partnerName}`,
+        summary: `${admin?.email ?? "An admin"} deleted “${existing.name}”${existing.partnerName ? ` from ${existing.partnerName}` : ""}`,
+        request: _request,
       });
     }
     return NextResponse.json({ ok: true });

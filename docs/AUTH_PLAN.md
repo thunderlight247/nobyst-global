@@ -1,6 +1,6 @@
 # Admin and partner sign-in plan
 
-Status: **Phases 1–3 built (2026-11-19); Phase 4 planned.** Decisions made on 2026-11-19:
+Status: **All four phases built (2026-11-19).** Decisions made on 2026-11-19:
 authenticator-app 2FA, required for admins and optional for partners; an owner role above admin;
 re-confirmation before risky actions; separate sign-in pages; a security log.
 
@@ -78,7 +78,7 @@ authenticator code). The `created_at` and `reauth_at` session columns move to Ph
 Built as planned. Turning 2FA off and new recovery codes already require a code, so they are not
 behind the extra dialog. Migration `0014_reauth.sql` adds `sessions.reauth_at`.
 
-## Phase 4: security log
+## Phase 4: security log (done)
 
 - Table `security_events (id, at, actor_id, actor_email, action, target, detail, ip, user_agent)`.
 - **Logged:**
@@ -95,7 +95,11 @@ behind the extra dialog. Migration `0014_reauth.sql` adds `sessions.reauth_at`.
 - **Security tab in the admin** (admins and owners): newest first, filter by person or action. Kept
   for 12 months, pruned automatically.
 
-## Schema (one migration, `0013_auth_hardening.sql`)
+Built on the marketplace's `activity_log` instead of a separate table (migration `0017_security_log.sql`
+adds `category`, `ip` and `user_agent`). It appears as **Admin → Activity & security** with a type
+filter and a banner when there were failed sign-ins, wrong codes or lockouts in the last 24 hours.
+
+## Schema (as first planned; built as migrations 0013, 0014 and 0017)
 
 - `users.role` gains `'owner'`. There's no constraint to change; the code enforces the allowed values.
 - `sessions`: add `created_at`, `mfa_verified_at`, `reauth_at`.

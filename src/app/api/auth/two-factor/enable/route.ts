@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentSessionHash, getCurrentUser } from "@/lib/auth";
 import { confirmSetup } from "@/lib/two-factor";
 import { clearLimit, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { logActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "That code is not right. Check the time on your phone and try the newest code." }, { status: 400 });
     }
     await clearLimit(`2fa:verify:${user.id}`);
+    await logActivity({ actor: { id: user.id, email: user.email, role: user.role }, action: "2fa.enabled", entityId: user.id, summary: `${user.email} turned on two-step sign-in (other devices signed out)`, request });
     return NextResponse.json({ recoveryCodes }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("2FA enable failed", error);

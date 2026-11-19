@@ -101,8 +101,8 @@ describe("passwords and sessions", () => {
     await seedUser(state.env, "u1", "a@example.com");
     await createSession("u1");
     const token = await createPasswordReset("u1");
-    expect(await resetPassword(token, "new-password-1")).toBe(true);
-    expect(await resetPassword(token, "new-password-2")).toBe(false);
+    expect(await resetPassword(token, "new-password-1")).toBe("u1");
+    expect(await resetPassword(token, "new-password-2")).toBeNull();
     const sessions = await state.env.DB.prepare("SELECT COUNT(*) AS n FROM sessions").first<{ n: number }>();
     expect(sessions?.n).toBe(0);
   });

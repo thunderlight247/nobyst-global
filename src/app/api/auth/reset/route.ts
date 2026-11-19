@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { resetPassword } from "@/lib/auth";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { logActivity } from "@/lib/activity";
+import { getEnv } from "@/lib/cloudflare";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +27,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This reset link is invalid or has expired." }, { status: 400 });
   }
 
-  const ok = await resetPassword(token, password);
-  if (!ok) {
+  const userId = await resetPassword(token, password);
+  if (userId) {
+    const { DB } = await getEnv();
+    const who = await DB.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first<{ email: string }>();
+    await logActivity({ actor: null, actorEmail: who?.email ?? null, action: "auth.password_reset", entityId: userId, summary: `${who?.email ?? "An account"} set a new password with a reset link (all devices signed out)`, request });
+  }
+  if (!userId) {
     return NextResponse.json({ error: "This reset link is invalid or has expired." }, { status: 400 });
   }
   return NextResponse.json({ ok: true });

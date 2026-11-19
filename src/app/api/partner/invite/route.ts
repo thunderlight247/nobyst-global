@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth";
 import { acceptInvitation, findInvitation } from "@/lib/invitations";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { logActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,14 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
     const result = await acceptInvitation(token, user);
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+    await logActivity({
+      actor: { id: user.id, email: user.email, role: user.role },
+      partnerId: user.id,
+      action: "invite.accepted",
+      entityId: invitation.id,
+      summary: `${user.email} accepted the partner invitation for ${result.company}`,
+      request,
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -63,6 +72,14 @@ export async function POST(request: Request) {
     const user = await createUser(invitation.email, name, password);
     const result = await acceptInvitation(token, user);
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+    await logActivity({
+      actor: { id: user.id, email: user.email, role: user.role },
+      partnerId: user.id,
+      action: "invite.accepted",
+      entityId: invitation.id,
+      summary: `${user.email} accepted the partner invitation for ${result.company}`,
+      request,
+    });
     const session = await createSession(user.id);
     (await cookies()).set(SESSION_COOKIE, session, sessionCookieOptions());
     return NextResponse.json({ ok: true });

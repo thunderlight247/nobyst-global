@@ -6,6 +6,7 @@ import { clientIp, hit, LIMITS, rateLimit } from "@/lib/rate-limit";
 import { createInvitation, revokeInvitation, sendInvitationEmail } from "@/lib/invitations";
 import { findUserByEmail, isStaff } from "@/lib/auth";
 import { domainAcceptsMail } from "@/lib/email-check";
+import { logActivity } from "@/lib/activity";
 
 /**
  * Business names from the partner form are put into an email sent to the address the visitor
@@ -108,6 +109,14 @@ export async function POST(request: Request) {
         });
         if (await sendInvitationEmail(invitation, token, await publicOrigin(request))) {
           autoInvite = "sent";
+          await logActivity({
+            actor: null,
+            actorEmail: email,
+            action: "invite.sent_auto",
+            entityId: invitation.id,
+            summary: `Invitation emailed automatically to ${businessName} (${email}) after their application`,
+            request,
+          });
         } else {
           await revokeInvitation(invitation.id);
           autoInvite = "undeliverable";

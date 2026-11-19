@@ -4,6 +4,8 @@ import { publicOrigin } from "@/lib/email";
 import { CheckoutError, createPartnerQuote } from "@/lib/orders";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { requireRecentAuth } from "@/lib/reauth";
+import { logActivity } from "@/lib/activity";
+import { formatPrice } from "@/lib/catalogue";
 
 // Admin only: every handler checks the signed-in user's role before doing anything.
 export const dynamic = "force-dynamic";
@@ -40,6 +42,13 @@ export async function POST(request: Request) {
 
   try {
     const order = await createPartnerQuote({ enquiryId, unitPesewas, quantity, note, origin: await publicOrigin(request) });
+    await logActivity({
+      actor: { id: auth.user.id, email: auth.user.email, role: auth.user.role },
+      action: "quote.sent",
+      entityId: order.id,
+      summary: `${auth.user.email} sent quote ${order.reference} for ${formatPrice(order.totalPesewas)} to ${order.email}`,
+      request,
+    });
     return NextResponse.json({ order }, { status: 201 });
   } catch (error) {
     if (error instanceof CheckoutError) return NextResponse.json({ error: error.message }, { status: 400 });

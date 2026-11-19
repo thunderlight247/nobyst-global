@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSession, createUser, findUserByEmail, normaliseEmail, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { logActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
 
   try {
     const user = await createUser(email, name, password);
+    await logActivity({ actor: { id: user.id, email: user.email, role: user.role }, action: "auth.signup", entityId: user.id, summary: `${user.email} created an account`, request });
     const token = await createSession(user.id);
     (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions());
     return NextResponse.json({ ok: true });

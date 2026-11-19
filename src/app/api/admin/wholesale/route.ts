@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser, requireAdmin } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
+import { formatPrice } from "@/lib/catalogue";
 import { getEnv } from "@/lib/cloudflare";
 import { parseWholesaleInput, saveWholesalePrice } from "@/lib/wholesale";
 
@@ -21,5 +23,16 @@ export async function PUT(request: Request) {
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
   await saveWholesalePrice(productId, parsed.value);
+  const admin = await getCurrentUser();
+  const product = await DB.prepare("SELECT name FROM products WHERE id = ?").bind(productId).first<{ name: string }>();
+  await logActivity({
+    actor: admin ? { id: admin.id, email: admin.email, role: admin.role } : null,
+    action: "wholesale.price",
+    entityId: productId,
+    summary: parsed.value
+      ? `${admin?.email ?? "An admin"} set the wholesale price of “${product?.name}” to ${formatPrice(parsed.value.pricePesewas)} (min ${parsed.value.minQuantity})`
+      : `${admin?.email ?? "An admin"} removed “${product?.name}” from the wholesale list`,
+    request,
+  });
   return NextResponse.json({ productId, wholesale: parsed.value });
 }

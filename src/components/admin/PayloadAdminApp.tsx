@@ -233,7 +233,7 @@ export default function PayloadAdminApp({
             { id: "wholesale", label: "Wholesale", icon: Tag, badge: Object.keys(wholesale).length ? `${Object.keys(wholesale).length} listed` : null },
             { id: "approvals", label: "Approvals", icon: CheckSquare, badge: approvalsCount ? `${approvalsCount} waiting` : null },
             { id: "partners", label: "Partner shops", icon: Store, badge: initialPartners.length ? String(initialPartners.length) : null },
-            { id: "activity", label: "Activity", icon: History, badge: null },
+            { id: "activity", label: "Activity & security", icon: History, badge: null },
             { id: "media", label: "Media & 3D Assets", icon: FileBox, badge: models3dCount ? `${models3dCount} 3D` : null },
           ].map((item) => {
             const Icon = item.icon;

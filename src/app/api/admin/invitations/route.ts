@@ -5,6 +5,7 @@ import { createInvitation, listInvitations, revokeInvitation, sendInvitationEmai
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { domainAcceptsMail, suggestEmail } from "@/lib/email-check";
 import { requireRecentAuth } from "@/lib/reauth";
+import { logActivity } from "@/lib/activity";
 
 // Admin only: every handler checks the signed-in user's role before doing anything.
 export const dynamic = "force-dynamic";
@@ -78,6 +79,13 @@ export async function POST(request: Request) {
         { status: 502 }
       );
     }
+    await logActivity({
+      actor: { id: auth.user.id, email: auth.user.email, role: auth.user.role },
+      action: "invite.sent",
+      entityId: invitation.id,
+      summary: `${auth.user.email} invited ${invitation.company} (${invitation.email})${invitation.trusted ? " as a trusted partner" : ""}`,
+      request,
+    });
     return NextResponse.json({ invitation }, { status: 201 });
   } catch (error) {
     console.error("Could not create invitation", error);

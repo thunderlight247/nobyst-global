@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getEnv } from "./cloudflare";
+import { logActivity } from "./activity";
 import { isPartnerStatus, isRole, isStaff, roleChangeError, type PartnerStatus, type Role } from "./roles";
 
 export { ROLES, isRole, isStaff, type Role } from "./roles";
@@ -342,7 +343,7 @@ export async function listUsers(): Promise<UserSummary[]> {
  * loses access immediately rather than at session expiry.
  */
 export async function updateUserAccess(
-  actor: { id: string; role: Role },
+  actor: { id: string; role: Role; email?: string },
   id: string,
   role: Role,
   company: string | null,
@@ -375,6 +376,20 @@ export async function updateUserAccess(
   if ((res.meta?.changes ?? 0) === 0) {
     return { error: "This is the only owner. Make someone else an owner first.", status: 409 };
   }
+  const changes: string[] = [];
+  if (current !== role) changes.push(`role ${current} → ${role}`);
+  const previousStatus = isPartnerStatus(before.partner_status) ? before.partner_status : null;
+  if (role === "partner" && previousStatus !== nextPartnerStatus) changes.push(`partner status ${previousStatus ?? "none"} → ${nextPartnerStatus}`);
+  if (changes.length) {
+    const target = await DB.prepare("SELECT email FROM users WHERE id = ?").bind(id).first<{ email: string }>();
+    await logActivity({
+      actor: { id: actor.id, email: actor.email ?? actor.id, role: actor.role },
+      partnerId: role === "partner" || current === "partner" ? id : null,
+      action: "user.access",
+      entityId: id,
+      summary: `${actor.email ?? "An admin"} changed ${target?.email ?? id}: ${changes.join(", ")}`,
+    });
+  }
   // Signing out on a role change or a suspension makes the change apply immediately.
   if (current !== role || (nextPartnerStatus === "suspended" && before.partner_status !== "suspended")) {
     await DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id).run();
@@ -406,7 +421,7 @@ export async function createPasswordReset(userId: string): Promise<string> {
 }
 
 /** Sets the new password if the token is valid, unused and unexpired. Signs out other sessions. */
-export async function resetPassword(token: string, password: string): Promise<boolean> {
+export async function resetPassword(token: string, password: string): Promise<string | null> {
   const { DB } = await getEnv();
   const tokenHash = await sha256Hex(token);
   const now = new Date().toISOString();
@@ -418,7 +433,7 @@ export async function resetPassword(token: string, password: string): Promise<bo
   )
     .bind(now, tokenHash, now)
     .first<{ user_id: string }>();
-  if (!row) return false;
+  if (!row) return null;
 
   await DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
     .bind(await hashPassword(password), row.user_id)
@@ -428,5 +443,5 @@ export async function resetPassword(token: string, password: string): Promise<bo
   await DB.prepare("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL")
     .bind(now, row.user_id)
     .run();
-  return true;
+  return row.user_id;
 }

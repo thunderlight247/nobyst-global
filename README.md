@@ -77,6 +77,14 @@ through the admin at `/admin` — they are stored in Cloudflare D1 and their pho
   Five wrong tries lock it for 15 minutes.
 - **Invitation addresses** are checked before sending: the invite box suggests fixes for common
   typos (`gmail.coom` → `gmail.com`), and the server refuses domains that cannot receive email.
+- **Security log** — **Admin → Activity & security** records sign-ins and failed attempts (with
+  the IP address), lockouts, 2FA changes and recovery-code use, failed "Confirm it's you" attempts,
+  sign-ups, password resets, role and partner-status changes, invitations, admin changes to
+  products (with price and stock changes), orders, quotes and wholesale prices, and everything
+  partners do. Passwords, codes and tokens are never recorded. Entries are kept 12 months.
+- **Shopping** — anyone can browse, open products and add to the cart (saved in the browser);
+  paying needs an account. In the cart, guests see **Sign in to pay** / **Create an account**
+  instead of the checkout form and come straight back to the cart afterwards.
 - **Admin** — `/admin` (not linked in navigation, hidden from search engines). Guests are sent to
   `/admin/login`; non-staff accounts see an "access needed" page with no data. Make the **first** owner
   from the terminal after signing up on `/account`:
@@ -173,8 +181,9 @@ unchanged).
    order statuses and partner quotes, and `0012_clear_placeholder_prices.sql` removes the test prices
    from 0007, `0013_two_factor.sql` adds two-step sign-in,
    `0014_reauth.sql` the "Confirm it's you" timestamp and `0015_partner_applications.sql`
-   automatic invitations and partner status, and `0016_marketplace.sql` partner products, order lines
-   per seller, category requests, payouts and the activity log. Until they run, nobody can open the admin or the partner portal.
+   automatic invitations and partner status, `0016_marketplace.sql` partner products, order lines
+   per seller, category requests, payouts and the activity log, and `0017_security_log.sql` the
+   security log columns. Until they run, nobody can open the admin or the partner portal.
    (`0002` is already part of `schema.sql` on new databases.)
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is
