@@ -18,12 +18,12 @@ async function post(url: string, body: unknown) {
   return { ok: res.ok, data };
 }
 
-export default function AccountPanel({ next }: { next?: string }) {
+export default function AccountPanel({ next, initialMode = "signin" }: { next?: string; initialMode?: "signin" | "signup" }) {
   const router = useRouter();
   // Only same-site paths are allowed, to prevent open redirects.
   // A requested page wins; otherwise each role lands on its own home (admin, partner portal, account).
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : null;
-  const [mode, setMode] = useState<Mode>("signin");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

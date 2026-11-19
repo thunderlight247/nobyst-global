@@ -19,9 +19,9 @@ function formatPrice(pesewas: number): string {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; mode?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, mode } = await searchParams;
   const user = await getCurrentUser();
   if (!user && (await getPendingUser().catch(() => null))) {
     redirect(`/signin/verify${next ? `?next=${encodeURIComponent(next)}` : ""}`);
@@ -35,7 +35,7 @@ export default async function AccountPage({
           Sign in to see your paid orders and reorder quickly.
         </p>
         <div className="mt-8">
-          <AccountPanel next={next} />
+          <AccountPanel next={next} initialMode={mode === "signup" ? "signup" : "signin"} />
         </div>
       </section>
     );

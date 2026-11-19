@@ -25,12 +25,20 @@ export default async function CartPage() {
           <p className="text-sm text-navy/80">
             You can keep shopping and add items freely. Sign in or create an account to complete your purchase.
           </p>
-          <Link
-            href="/account?next=/cart"
-            className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-royal"
-          >
-            Sign in to pay
-          </Link>
+          <div className="flex shrink-0 gap-2">
+            <Link
+              href="/account?next=/cart"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-royal"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/account?next=/cart&mode=signup"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-navy/20 bg-white px-5 py-2.5 text-sm font-bold text-navy hover:border-royal"
+            >
+              Create account
+            </Link>
+          </div>
         </div>
       )}
 

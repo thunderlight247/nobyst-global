@@ -178,6 +178,28 @@ export default function CartView({
           )}
         </div>
 
+        {!signedIn ? (
+          // Guests can fill the cart freely; paying needs an account, so they sign in first rather
+          // than typing their details and then losing them on the way to the sign-in page.
+          <div className="space-y-3 rounded-2xl border border-navy/10 bg-white p-5 text-center shadow-sm">
+            <p className="text-sm font-bold text-navy">Sign in to complete your purchase</p>
+            <p className="text-xs text-navy/60">
+              Your cart is saved on this device. You&apos;ll come straight back here after signing in.
+            </p>
+            <Link
+              href="/account?next=/cart"
+              className="inline-flex min-h-[48px] w-full items-center justify-center rounded-full bg-navy px-5 py-3 text-sm font-bold text-white hover:bg-royal"
+            >
+              Sign in to pay
+            </Link>
+            <Link
+              href="/account?next=/cart&mode=signup"
+              className="inline-flex min-h-[48px] w-full items-center justify-center rounded-full border border-navy/20 px-5 py-3 text-sm font-bold text-navy hover:border-royal hover:text-royal"
+            >
+              Create an account
+            </Link>
+          </div>
+        ) : (
         <form onSubmit={pay} className="space-y-3 rounded-2xl border border-navy/10 bg-white p-5 shadow-sm">
           <p className="text-sm font-bold text-navy">Your details</p>
           <input
@@ -272,15 +294,16 @@ export default function CartView({
           )}
           <button
             type="submit"
-            disabled={paying || !payable || !signedIn}
+            disabled={paying || !payable}
             className="inline-flex min-h-[48px] w-full items-center justify-center rounded-full bg-navy px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-royal disabled:opacity-60"
           >
-            {!signedIn ? "Sign in to pay" : paying ? "Redirecting to Paystack…" : "Pay with Paystack"}
+            {paying ? "Redirecting to Paystack…" : "Pay with Paystack"}
           </button>
           <p className="text-center text-[11px] text-navy/55">
             Card and mobile money, processed securely by Paystack.
           </p>
         </form>
+        )}
       </div>
     </div>
   );
