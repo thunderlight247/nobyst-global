@@ -24,6 +24,16 @@ function cleanBusinessName(value: unknown): string | null {
 
 export const dynamic = "force-dynamic";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Trimmed string capped at `max` characters, or null when blank. */
@@ -164,9 +174,9 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, id: enquiry.id, invitationSent: autoInvite === "sent" }, { status: 201 });
+    return NextResponse.json({ ok: true, id: enquiry.id, invitationSent: autoInvite === "sent" }, { status: 201, headers: CORS });
   } catch (error) {
     console.error("Failed to capture enquiry:", error);
-    return NextResponse.json({ error: "Could not save enquiry." }, { status: 500 });
+    return NextResponse.json({ error: "Could not save enquiry." }, { status: 500, headers: CORS });
   }
 }
