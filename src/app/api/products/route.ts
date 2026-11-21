@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     );
   }
 
-  // Return only fields needed by the mobile app
+  // Return fields needed by the mobile app
   const payload = products.map((p) => ({
     id: p.id,
     name: p.name,
@@ -48,6 +48,8 @@ export async function GET(request: Request) {
     category: p.category,
     stockStatus: p.stockStatus,
     image: p.image,
+    gallery: p.gallery ?? [],
+    colors: p.colors ?? [],
     imageAlt: p.imageAlt,
   }));
 

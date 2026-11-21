@@ -30,11 +30,15 @@ export async function GET(
       name: product.name,
       slug: product.slug,
       description: product.description,
+      features: product.features ?? [],
       pricePesewas: product.pricePesewas,
       category: product.category,
       stockStatus: product.stockStatus,
       image: product.image,
+      gallery: product.gallery ?? [],
+      colors: product.colors ?? [],
       imageAlt: product.imageAlt,
+      partnerName: product.partnerName ?? null,
     },
     { headers: CORS }
   );
