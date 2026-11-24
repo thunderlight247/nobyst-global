@@ -12,6 +12,8 @@ import {
 } from "@/lib/auth";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 import { logActivity } from "@/lib/activity";
+import { sendVerificationEmail } from "@/lib/email-verification";
+import { publicOrigin } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +58,7 @@ export async function POST(request: Request) {
     const user = await createUser(email, name, password);
     await logActivity({ actor: { id: user.id, email: user.email, role: user.role }, action: "auth.signup", entityId: user.id, summary: `${user.email} created an account via mobile app`, request });
     const token = await createSession(user.id);
+    await sendVerificationEmail(user, await publicOrigin(request));
 
     return NextResponse.json(
       {

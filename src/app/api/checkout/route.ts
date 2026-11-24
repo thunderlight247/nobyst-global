@@ -44,6 +44,13 @@ export async function POST(request: Request) {
       { status: 401 }
     );
   }
+  // Receipts and delivery updates go by email, so the address must be confirmed before paying.
+  if (!user.emailVerified) {
+    return NextResponse.json(
+      { error: "Please confirm your email address first: open the link we emailed you, or resend it from your account.", emailVerificationRequired: true },
+      { status: 403 }
+    );
+  }
 
   const limited = await rateLimit([[`checkout:user:${user.id}`, LIMITS.checkoutUser]]);
   if (limited) return limited;

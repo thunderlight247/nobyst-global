@@ -32,9 +32,16 @@ adding API routes, auth changes, new payment flows or new third-party services.
 - Signing out now deletes the session on the server for Bearer tokens too; the mobile app's sign-out calls it (change in `nobyst-mobile/lib/api.ts` and `store/index.ts`).
 - Mobile sign-in: proper OPTIONS reply, lockouts logged, the app can read "too many attempts".
 
+## Added after the review (2026-11-24)
+
+- **Email verification:** new accounts get a "confirm your email" link (48 h, single use); customers must confirm before paying. Password-reset links and partner invitations also count as confirmation. Migration `0018_email_verification.sql`.
+- **Turnstile** on web sign-up, forgot-password and the partner form. Off until `TURNSTILE_SITE_KEY` (var) and `TURNSTILE_SECRET_KEY` (secret) are set; CSP allows `challenges.cloudflare.com` only for it.
+- **2FA in the mobile app:** the mobile sign-in returns `{ twoFactorRequired, token }`; that token is refused everywhere until the app sends a code to `/api/auth/two-factor/verify`. Partners can now sign in to the app; staff still cannot.
+- **Your data:** My account → Download my data (`/api/account/export`) and Delete my account (`/api/account/delete`: password, 2FA code if on, and typing DELETE). Paid orders are kept without personal details; partners and staff must ask. Privacy policy at `/privacy` (draft: have it reviewed).
+
 ## Recommended next
 
-1. **Cloudflare Access in front of `/admin`** (free for small teams): only your Google/email accounts can even reach the admin sign-in.
+1. **Cloudflare Access in front of `/admin` and `/api/admin`** (free for small teams): only your Google/email accounts can even reach the admin sign-in.
 2. **Cloudflare Turnstile** on sign-up, forgot-password and the partner form, to stop bots (the partner form now sends invitation emails).
 3. **Email verification for customer sign-ups** now that sending email works.
 4. **Disable the `workers.dev` address** so the site only answers on nobyst.com.

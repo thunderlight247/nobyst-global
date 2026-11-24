@@ -69,7 +69,10 @@ export default function Footer() {
 
       <div className="border-t border-white/10 px-5 py-5 text-center text-xs text-white/60">
         <p>
-          © {new Date().getFullYear()} {site.name}. All rights reserved.
+          © {new Date().getFullYear()} {site.name}. All rights reserved. ·{" "}
+          <Link href="/privacy" className="underline hover:text-gold">
+            Privacy policy
+          </Link>
         </p>
       </div>
     </footer>

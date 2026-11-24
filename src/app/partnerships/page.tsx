@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import EnquiryForm from "@/components/EnquiryForm";
+import { turnstileSiteKey } from "@/lib/turnstile";
 import { Handshake, CheckCircle2, ShieldCheck, MapPin } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -8,7 +9,9 @@ export const metadata: Metadata = {
     "Suppliers, distributors and collaborators: enquire about working with NOBYST GLOBAL LTD in Techiman, Ghana.",
 };
 
-export default function Partnerships() {
+export const dynamic = "force-dynamic";
+
+export default async function Partnerships() {
   return (
     <section className="mx-auto max-w-6xl px-5 py-12 sm:px-6 sm:py-20 lg:px-8">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12">
@@ -70,7 +73,7 @@ export default function Partnerships() {
             <CheckCircle2 size={16} aria-hidden />
             <span>Partnership enquiry</span>
           </div>
-          <EnquiryForm />
+          <EnquiryForm turnstileSiteKey={await turnstileSiteKey().catch(() => null)} />
           <p className="mt-4 text-center text-sm text-navy/70">
             Already an approved partner?{" "}
             <a href="/partner/login" className="font-bold text-royal underline">

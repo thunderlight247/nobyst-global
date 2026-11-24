@@ -46,6 +46,9 @@ export type CloudflareEnv = {
   ADMIN_EMAIL?: string;
   /** 32 random bytes, base64. Encrypts authenticator secrets in D1. `wrangler secret put TOTP_ENCRYPTION_KEY`. */
   TOTP_ENCRYPTION_KEY?: string;
+  /** Cloudflare Turnstile: public site key (wrangler var) and secret (wrangler secret). Both unset = off. */
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
 };
 
 /** Bindings from wrangler.jsonc (local miniflare in dev, Workers in production). */

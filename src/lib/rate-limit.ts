@@ -90,4 +90,6 @@ export const LIMITS = {
   // /checkout/verify asks Paystack about a reference; cap it so the page cannot be used to hammer
   // Paystack's API with our secret key.
   verifyIp: { limit: 30, windowSeconds: 15 * 60 },
+  verifyEmailUser: { limit: 3, windowSeconds: 60 * 60 },
+  accountDataUser: { limit: 5, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;

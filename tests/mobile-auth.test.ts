@@ -15,6 +15,7 @@ import { hotp, stepAt } from "@/lib/totp";
 import { GET as myOrders } from "@/app/api/orders/mine/route";
 import { POST as mobileCheckout } from "@/app/api/checkout/mobile/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
+import { POST as verify2fa } from "@/app/api/auth/two-factor/verify/route";
 import { POST as mobileLogin } from "@/app/api/auth/mobile/login/route";
 import { GET as publicProducts } from "@/app/api/products/route";
 import { hashPassword } from "@/lib/auth";
@@ -80,17 +81,32 @@ describe("mobile sign-in and sign-out", () => {
     expect((await myOrders(bearer(token))).status).toBe(401);
   });
 
-  it("gives tokens to customers only, and never to an account with 2FA on", async () => {
+  it("gives tokens to customers and partners, never to staff", async () => {
     const hash = await hashPassword("pass-12345");
-    for (const [id, role] of [["c", "customer"], ["a", "admin"], ["t", "customer"]]) {
-      await state.env.DB.prepare("INSERT INTO users (id, email, name, password_hash, role) VALUES (?, ?, 'N', ?, ?)").bind(id, `${id}@e.com`, hash, role).run();
+    for (const [id, role] of [["c", "customer"], ["p", "partner"], ["a", "admin"]]) {
+      await state.env.DB.prepare("INSERT INTO users (id, email, name, password_hash, role, partner_status) VALUES (?, ?, 'N', ?, ?, 'trusted')").bind(id, `${id}@e.com`, hash, role).run();
     }
-    await state.env.DB.prepare("INSERT INTO user_totp (user_id, secret_ciphertext, enabled_at) VALUES ('t', 'x', datetime('now'))").run();
     expect((await login("c@e.com")).status).toBe(200);
+    expect((await login("p@e.com")).status).toBe(200);
     expect((await login("a@e.com")).status).toBe(403);
-    const twoFactor = await login("t@e.com");
-    expect(twoFactor.status).toBe(403);
-    expect(await twoFactor.json()).not.toHaveProperty("token");
+  });
+
+  it("asks for the 2FA code before the app's token works", async () => {
+    const hash = await hashPassword("pass-12345");
+    await state.env.DB.prepare("INSERT INTO users (id, email, name, password_hash, role, partner_status) VALUES ('p', 'p@e.com', 'P', ?, 'partner', 'trusted')").bind(hash).run();
+    const setupToken = await createSession("p");
+    const { secret } = (await beginSetup({ id: "p", email: "p@e.com" }))!;
+    await confirmSetup("p", await hotp(secret, stepAt(Date.now())), await sha(setupToken));
+
+    const res = await login("p@e.com");
+    const body = (await res.json()) as { twoFactorRequired?: boolean; token: string; user?: unknown };
+    expect(body.twoFactorRequired).toBe(true);
+    expect(body.user).toBeUndefined();
+    expect((await myOrders(bearer(body.token))).status).toBe(401);
+
+    const verified = await verify2fa(bearer(body.token, "POST", { code: await hotp(secret, stepAt(Date.now()) + 1) }));
+    expect(await verified.json()).toMatchObject({ ok: true, user: { email: "p@e.com", role: "partner" } });
+    expect((await myOrders(bearer(body.token))).status).toBe(200);
   });
 });
 

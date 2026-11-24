@@ -21,9 +21,8 @@ export async function OPTIONS(request: Request) {
  * The signed-in account's id, from the mobile app's Bearer token or the website cookie. Uses the
  * site's central session rules, so a session still waiting for its 2FA code is refused here too.
  */
-async function resolveUserId(request: Request): Promise<string | null> {
-  const user = await getUserFromRequest(request).catch(() => null);
-  return user?.id ?? null;
+async function resolveUser(request: Request) {
+  return getUserFromRequest(request).catch(() => null);
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,11 +60,19 @@ function parseInput(raw: unknown): CheckoutInput | string {
 
 export async function POST(request: Request) {
   const CORS = corsHeaders(request, "POST, OPTIONS");
-  const userId = await resolveUserId(request);
-  if (!userId) {
+  const user = await resolveUser(request);
+  if (!user) {
     return NextResponse.json(
       { error: "Please sign in or create an account to complete your purchase." },
       { status: 401, headers: CORS }
+    );
+  }
+  const userId = user.id;
+  // Receipts and delivery updates go by email, so the address must be confirmed before paying.
+  if (!user.emailVerified) {
+    return NextResponse.json(
+      { error: "Please confirm your email address first: open the link we emailed you, or resend it from your account.", emailVerificationRequired: true },
+      { status: 403, headers: CORS }
     );
   }
 

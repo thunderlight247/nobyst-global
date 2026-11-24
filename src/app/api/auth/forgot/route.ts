@@ -4,6 +4,7 @@ import { getEnv } from "@/lib/cloudflare";
 import { escapeHtml, sendEmail } from "@/lib/email";
 import { clientIp, hit, LIMITS, rateLimit } from "@/lib/rate-limit";
 import { logActivity } from "@/lib/activity";
+import { passesTurnstile, TURNSTILE_FAILED } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,9 @@ export async function POST(request: Request) {
 
   const email = typeof body.email === "string" ? normaliseEmail(body.email) : "";
   if (!email || email.length > 200) return done();
+  if (!(await passesTurnstile(request, body.turnstileToken))) {
+    return NextResponse.json({ error: TURNSTILE_FAILED, turnstile: true }, { status: 400 });
+  }
 
   // Cap reset emails per address so nobody can flood an inbox. The reply stays the same either
   // way, so the limit does not reveal whether the account exists.

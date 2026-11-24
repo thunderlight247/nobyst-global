@@ -164,6 +164,11 @@ export async function acceptInvitation(
   )
     .bind(claimed.company, claimed.trusted ? 1 : 0, user.id)
     .run();
+  // The invitation link was emailed to this address, so it is confirmed.
+  await DB.prepare("UPDATE users SET email_verified_at = COALESCE(email_verified_at, datetime('now')) WHERE id = ?")
+    .bind(user.id)
+    .run()
+    .catch(() => undefined);
   return { ok: true, company: claimed.company };
 }
 

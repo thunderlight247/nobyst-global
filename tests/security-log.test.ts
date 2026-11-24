@@ -138,6 +138,9 @@ describe("shopping needs an account only to pay", () => {
     await seedProduct(state.env, { id: "p1" });
     vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ status: true, data: { authorization_url: "https://pay.test/x" } })));
     expect((await signup(json({ name: "Kofi Mensah", email: "k@example.com", password: PASSWORD }))).status).toBe(200);
+    // Paying needs a confirmed email.
+    expect((await checkout(json(order))).status).toBe(403);
+    await state.env.DB.prepare("UPDATE users SET email_verified_at = datetime('now')").run();
     const res = await checkout(json(order));
     expect(await res.json()).toMatchObject({ authorizationUrl: "https://pay.test/x" });
   });

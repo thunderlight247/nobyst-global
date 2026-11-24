@@ -2,17 +2,20 @@
 import { useState } from "react";
 import { CheckCircle2, Mail, Send } from "lucide-react";
 import { mailtoLink } from "@/lib/contact-links";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 const types = ["Supplier", "Distributor", "Business collaborator", "Other organisation"];
 
 const field =
   "mt-1.5 min-h-[44px] w-full rounded-xl border border-navy/20 bg-paper/50 px-4 py-3 text-sm text-navy placeholder:text-navy/40 transition-all focus:border-royal focus:bg-white focus:outline-none focus:ring-2 focus:ring-royal/20";
 
-export default function EnquiryForm() {
+export default function EnquiryForm({ turnstileSiteKey = null }: { turnstileSiteKey?: string | null }) {
   const [sent, setSent] = useState<{ mail: string; invited: boolean } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,6 +31,10 @@ export default function EnquiryForm() {
       next.message = "Please write at least 20 characters describing your proposal.";
     if (Object.keys(next).length) {
       setErrors(next);
+      return;
+    }
+    if (turnstileSiteKey && !turnstileToken) {
+      setServerError("Please complete the security check.");
       return;
     }
 
@@ -53,11 +60,17 @@ export default function EnquiryForm() {
           name: data.name.trim(),
           email: data.email.trim(),
           company: data.organisation?.trim() || null,
+          turnstileToken,
           topic: data.type,
           message: data.message.trim(),
         }),
       });
-      const result = (await res.json().catch(() => ({}))) as { error?: string; invitationSent?: boolean };
+      const result = (await res.json().catch(() => ({}))) as { error?: string; invitationSent?: boolean; turnstile?: boolean };
+      setTurnstileReset((n) => n + 1);
+      if (result.turnstile) {
+        setServerError(result.error ?? "Please complete the security check.");
+        return;
+      }
       if (!res.ok) {
         if (res.status === 400 && result.error) {
           setErrors({ organisation: result.error });
@@ -186,6 +199,7 @@ export default function EnquiryForm() {
           <Send size={18} aria-hidden />
           {submitting ? "Sending..." : "Send partnership enquiry"}
         </button>
+        <TurnstileWidget siteKey={turnstileSiteKey} onToken={setTurnstileToken} resetKey={turnstileReset} />
         {serverError && (
           <p role="alert" className="mt-2.5 text-xs font-semibold text-red-600">
             {serverError}

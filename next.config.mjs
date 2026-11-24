@@ -7,7 +7,9 @@ const isDev = process.env.NODE_ENV !== "production";
 // Paystack checkout is a full-page redirect, which CSP does not govern.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // challenges.cloudflare.com: the Turnstile bot check on sign-up, forgot-password and partner forms.
+  `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""}`,
+  "frame-src https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",

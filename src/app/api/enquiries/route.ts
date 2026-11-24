@@ -8,6 +8,7 @@ import { createInvitation, revokeInvitation, sendInvitationEmail } from "@/lib/i
 import { findUserByEmail, isStaff } from "@/lib/auth";
 import { domainAcceptsMail } from "@/lib/email-check";
 import { logActivity } from "@/lib/activity";
+import { passesTurnstile, TURNSTILE_FAILED } from "@/lib/turnstile";
 
 /**
  * Business names from the partner form are put into an email sent to the address the visitor
@@ -70,6 +71,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please keep your message under 5000 characters." }, { status: 400 });
     }
     const businessName = type === "partnership" ? cleanBusinessName(body.company) : null;
+    // Partner applications send an email automatically, so they get the bot check.
+    if (type === "partnership" && !(await passesTurnstile(request, body.turnstileToken))) {
+      return NextResponse.json({ error: TURNSTILE_FAILED, turnstile: true }, { status: 400, headers: CORS });
+    }
     if (type === "partnership" && !businessName) {
       return NextResponse.json(
         { error: "Please enter your business name (letters, numbers and simple punctuation, no web links)." },

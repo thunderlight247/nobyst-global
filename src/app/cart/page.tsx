@@ -43,7 +43,12 @@ export default async function CartPage() {
       )}
 
       <div className="mt-8">
-        <CartView signedIn={Boolean(user)} defaultName={user?.name} defaultEmail={user?.email} />
+        <CartView
+          signedIn={Boolean(user)}
+          emailVerified={user?.emailVerified ?? false}
+          defaultName={user?.name}
+          defaultEmail={user?.email}
+        />
       </div>
     </section>
   );

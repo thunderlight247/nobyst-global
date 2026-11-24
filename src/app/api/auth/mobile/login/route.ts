@@ -60,21 +60,22 @@ export async function POST(request: Request) {
     return invalid;
   }
 
-  // Only customer role can use the mobile app (staff use the web admin)
-  if (user.role !== "customer") {
-    return NextResponse.json({ error: "Please use the web portal for staff access." }, { status: 403, headers: corsHeaders });
+  // Customers and partners can shop in the app; staff use the website admin.
+  if (user.role !== "customer" && user.role !== "partner") {
+    return NextResponse.json({ error: "Please use the website for staff access." }, { status: 403, headers: corsHeaders });
   }
-
-  // The app has no 2FA code step yet, so an account with 2FA on must sign in on the website.
-  // (Issuing a token here would skip the second step.)
-  if (await isTwoFactorEnabled(user.id)) {
-    return NextResponse.json(
-      { error: "This account uses two-step sign-in. Please sign in on nobyst.com." },
-      { status: 403, headers: corsHeaders }
-    );
+  if (user.role === "partner" && user.partnerStatus === "suspended") {
+    return NextResponse.json({ error: "Your partner account is suspended. Contact info@nobyst.com." }, { status: 403, headers: corsHeaders });
   }
 
   const token = await createSession(user.id);
+
+  // With 2FA on, this token is only good for the code step: every other API refuses it until
+  // the app sends a correct code to /api/auth/two-factor/verify with it.
+  if (await isTwoFactorEnabled(user.id)) {
+    await logActivity({ actor: { id: user.id, email: user.email, role: user.role }, action: "auth.login", entityId: user.id, summary: `${user.email} signed in via mobile app (password correct, 2FA code next)`, request });
+    return NextResponse.json({ twoFactorRequired: true, token }, { status: 200, headers: corsHeaders });
+  }
   await logActivity({ actor: { id: user.id, email: user.email, role: user.role }, action: "auth.login", entityId: user.id, summary: `${user.email} signed in via mobile app`, request });
 
   return NextResponse.json(

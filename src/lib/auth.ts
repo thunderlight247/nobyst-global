@@ -25,6 +25,8 @@ export type CurrentUser = {
   needsTwoFactorSetup: boolean;
   /** For partners: pending, trusted or suspended. Null for everyone else. */
   partnerStatus: PartnerStatus | null;
+  /** The account confirmed its email (link, password reset or partner invitation). */
+  emailVerified: boolean;
 };
 
 function toBase64(bytes: Uint8Array): string {
@@ -119,7 +121,7 @@ export async function createUser(email: string, name: string, password: string):
   await DB.prepare("INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)")
     .bind(id, normalised, name, await hashPassword(password))
     .run();
-  return { id, email: normalised, name, role: "customer", company: null, twoFactorEnabled: false, needsTwoFactorSetup: false, partnerStatus: null };
+  return { id, email: normalised, name, role: "customer", company: null, twoFactorEnabled: false, needsTwoFactorSetup: false, partnerStatus: null, emailVerified: false };
 }
 
 /** Creates a session row and returns the raw token for the cookie. */
@@ -153,6 +155,7 @@ type SessionRow = {
   role?: unknown;
   company?: string | null;
   partner_status?: string | null;
+  email_verified_at?: string | null;
   session_expires_at: string;
   mfa_verified_at?: string | null;
   totp_enabled_at?: string | null;
@@ -223,6 +226,8 @@ async function loadSession(
       needsTwoFactorSetup: isStaff(role) && !twoFactorEnabled,
       // A partner with no recorded status predates statuses; they were all invited by an admin.
       partnerStatus: role === "partner" ? (isPartnerStatus(row.partner_status) ? row.partner_status : "trusted") : null,
+      // Before migration 0018 there is no column: treat everyone as verified rather than block payment.
+      emailVerified: row.email_verified_at === undefined ? true : Boolean(row.email_verified_at),
     },
   };
 }
@@ -254,6 +259,16 @@ export async function getUserFromRequest(request: Request): Promise<CurrentUser 
   if (!token) return getCurrentUser();
   const session = await loadSession(await sha256Hex(token));
   return session && !session.pending ? session.user : null;
+}
+
+/**
+ * For the 2FA code step: the account whose session (Bearer token from the app, or the cookie)
+ * has passed the password but not the code, and that session's hash. Null otherwise.
+ */
+export async function getPendingFromRequest(request: Request): Promise<{ user: CurrentUser; tokenHash: string } | null> {
+  const token = bearerToken(request);
+  const session = await loadSession(token ? await sha256Hex(token) : undefined);
+  return session?.pending ? { user: session.user, tokenHash: session.tokenHash } : null;
 }
 
 /** Ends the session behind this request's Bearer token or cookie. */
@@ -466,6 +481,11 @@ export async function resetPassword(token: string, password: string): Promise<st
   await DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
     .bind(await hashPassword(password), row.user_id)
     .run();
+  // The reset link proves the account owns its inbox.
+  await DB.prepare("UPDATE users SET email_verified_at = COALESCE(email_verified_at, datetime('now')) WHERE id = ?")
+    .bind(row.user_id)
+    .run()
+    .catch(() => undefined);
   // A reset signs out every session and voids any other outstanding reset links.
   await DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(row.user_id).run();
   await DB.prepare("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL")

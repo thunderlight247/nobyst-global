@@ -7,6 +7,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { useNobystStore, type CartItem } from "@/store/useStore";
 import { formatPrice } from "@/lib/catalogue";
 import { DELIVERY_METHODS, GHANA_REGIONS, parseDelivery } from "@/lib/delivery";
+import VerifyEmailNotice from "@/components/VerifyEmailNotice";
 
 function lineTotal(item: CartItem): number | null {
   return item.pricePesewas === null ? null : item.pricePesewas * item.quantity;
@@ -14,10 +15,12 @@ function lineTotal(item: CartItem): number | null {
 
 export default function CartView({
   signedIn,
+  emailVerified = true,
   defaultName = "",
   defaultEmail = "",
 }: {
   signedIn: boolean;
+  emailVerified?: boolean;
   defaultName?: string;
   defaultEmail?: string;
 }) {
@@ -199,6 +202,8 @@ export default function CartView({
               Create an account
             </Link>
           </div>
+        ) : !emailVerified ? (
+          <VerifyEmailNotice email={defaultEmail} context="cart" />
         ) : (
         <form onSubmit={pay} className="space-y-3 rounded-2xl border border-navy/10 bg-white p-5 shadow-sm">
           <p className="text-sm font-bold text-navy">Your details</p>

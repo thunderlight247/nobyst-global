@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PasswordInput from "@/components/PasswordInput";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -18,7 +19,16 @@ async function post(url: string, body: unknown) {
   return { ok: res.ok, data };
 }
 
-export default function AccountPanel({ next, initialMode = "signin" }: { next?: string; initialMode?: "signin" | "signup" }) {
+export default function AccountPanel({
+  next,
+  initialMode = "signin",
+  turnstileSiteKey = null,
+}: {
+  next?: string;
+  initialMode?: "signin" | "signup";
+  /** Cloudflare Turnstile site key; null when the bot check is not set up. */
+  turnstileSiteKey?: string | null;
+}) {
   const router = useRouter();
   // Only same-site paths are allowed, to prevent open redirects.
   // A requested page wins; otherwise each role lands on its own home (admin, partner portal, account).
@@ -27,6 +37,9 @@ export default function AccountPanel({ next, initialMode = "signin" }: { next?: 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const needsCheck = Boolean(turnstileSiteKey) && (mode === "signup" || mode === "forgot");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,16 +48,23 @@ export default function AccountPanel({ next, initialMode = "signin" }: { next?: 
     setNotice(null);
     setBusy(true);
 
+    if (needsCheck && !turnstileToken) {
+      setBusy(false);
+      setError("Please complete the security check.");
+      return;
+    }
     if (mode === "forgot") {
-      const { data: res } = await post("/api/auth/forgot", { email: data.email });
+      const { data: res } = await post("/api/auth/forgot", { email: data.email, turnstileToken });
+      setTurnstileReset((n) => n + 1);
       setBusy(false);
       setNotice(res.message ?? "If an account exists for this email, a reset link is on its way.");
       return;
     }
 
     const url = mode === "signup" ? "/api/auth/signup" : "/api/auth/login";
-    const body = mode === "signup" ? { name: data.name, email: data.email, password: data.password } : { email: data.email, password: data.password };
+    const body = mode === "signup" ? { name: data.name, email: data.email, password: data.password, turnstileToken } : { email: data.email, password: data.password };
     const { ok, data: res } = await post(url, body);
+    if (mode === "signup") setTurnstileReset((n) => n + 1);
     if (!ok) {
       setBusy(false);
       setError(res.error ?? "Something went wrong. Please try again.");
@@ -115,6 +135,7 @@ export default function AccountPanel({ next, initialMode = "signin" }: { next?: 
           </label>
         )}
 
+        {needsCheck && <TurnstileWidget siteKey={turnstileSiteKey} onToken={setTurnstileToken} resetKey={turnstileReset} />}
         {error && (
           <p role="alert" className="text-sm font-semibold text-red-600">
             {error}

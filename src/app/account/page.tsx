@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import AccountPanel, { SignOutButton } from "@/components/AccountPanel";
+import VerifyEmailNotice from "@/components/VerifyEmailNotice";
+import AccountDataPanel from "@/components/AccountDataPanel";
+import { turnstileSiteKey } from "@/lib/turnstile";
 import { getCurrentUser, getPendingUser, isStaff } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { listOrdersForUser } from "@/lib/orders";
@@ -35,7 +38,11 @@ export default async function AccountPage({
           Sign in to see your paid orders and reorder quickly.
         </p>
         <div className="mt-8">
-          <AccountPanel next={next} initialMode={mode === "signup" ? "signup" : "signin"} />
+          <AccountPanel
+            next={next}
+            initialMode={mode === "signup" ? "signup" : "signin"}
+            turnstileSiteKey={await turnstileSiteKey().catch(() => null)}
+          />
         </div>
       </section>
     );
@@ -52,6 +59,12 @@ export default async function AccountPage({
         </div>
         <SignOutButton />
       </div>
+
+      {!user.emailVerified && (
+        <div className="mt-8">
+          <VerifyEmailNotice email={user.email} />
+        </div>
+      )}
 
       {(user.role === "partner" || isStaff(user.role)) && (
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold/40 bg-gold-100/60 p-5">
@@ -107,6 +120,9 @@ export default async function AccountPage({
           ))}
         </ul>
       )}
+      <div className="mt-10">
+        <AccountDataPanel canDelete={user.role === "customer"} twoFactorEnabled={user.twoFactorEnabled} />
+      </div>
     </section>
   );
 }

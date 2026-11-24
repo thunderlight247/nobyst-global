@@ -179,7 +179,7 @@ describe("partner orders and money", () => {
     expect(a.map((i) => i.productName)).toEqual(["A case"]);
     expect(a[0].delivery.town).toBe("Kumasi");
     const b = await listPartnerOrderItems("b");
-    const asA = { id: "a", email: "a@example.com", name: "a", role: "partner" as const, company: "a Ltd", twoFactorEnabled: false, needsTwoFactorSetup: false, partnerStatus: "trusted" as const };
+    const asA = { id: "a", email: "a@example.com", name: "a", role: "partner" as const, company: "a Ltd", twoFactorEnabled: false, needsTwoFactorSetup: false, partnerStatus: "trusted" as const, emailVerified: true };
     expect(await updatePartnerItem(asA, b[0].id, "delivered")).toBeNull();
     expect((await listPartnerOrderItems("b"))[0].fulfilmentStatus).toBe("new");
     expect((await updatePartnerItem(asA, a[0].id, "delivered"))?.fulfilmentStatus).toBe("delivered");
@@ -189,7 +189,7 @@ describe("partner orders and money", () => {
     await sale();
     let e = await partnerEarnings("a");
     expect(e).toMatchObject({ grossPesewas: 20_000, commissionPesewas: 2_000, earnedPesewas: 0, pendingPesewas: 18_000, owedPesewas: 0 });
-    const asA = { id: "a", email: "a@example.com", name: "a", role: "partner" as const, company: "a Ltd", twoFactorEnabled: false, needsTwoFactorSetup: false, partnerStatus: "trusted" as const };
+    const asA = { id: "a", email: "a@example.com", name: "a", role: "partner" as const, company: "a Ltd", twoFactorEnabled: false, needsTwoFactorSetup: false, partnerStatus: "trusted" as const, emailVerified: true };
     const [line] = await listPartnerOrderItems("a");
     await updatePartnerItem(asA, line.id, "delivered");
     e = await partnerEarnings("a");
