@@ -27,7 +27,10 @@
   ],
   "vars": {
     "EMAIL_FROM": "NOBYST GLOBAL <info@nobyst.com>",
-    "SITE_URL": "https://nobyst.com"
+    "SITE_URL": "https://nobyst.com",
+    // Cloudflare Turnstile public site key (safe to publish). The matching secret is the
+    // TURNSTILE_SECRET_KEY worker secret; the bot check is on only when both are set.
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAGQG4hXkPiGERRDk"
   },
   "observability": {
     "enabled": true
