@@ -1,6 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nobyst-global",
+  // The Cloudflare account that owns nobyst.com. Pinned so a deploy can never land in another
+  // account wrangler happens to be signed in to.
+  "account_id": "068c53ba5374963a4ab2b68a8df626ff",
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-03-01",
   "compatibility_flags": ["nodejs_compat"],
