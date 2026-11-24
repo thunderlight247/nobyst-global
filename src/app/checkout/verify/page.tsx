@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { verifyCheckout } from "@/lib/orders";
+import { headers } from "next/headers";
+import { hit, LIMITS } from "@/lib/rate-limit";
 import ClearCartOnPaid from "@/components/ClearCartOnPaid";
 import { CheckCircle2, XCircle } from "lucide-react";
 
@@ -20,7 +22,11 @@ export default async function VerifyPage({
   const ref = reference ?? trxref ?? "";
 
   let state: "paid" | "failed" | "pending" | "not_found" | "missing" = "missing";
-  if (ref && /^[A-Za-z0-9-]{4,80}$/.test(ref)) {
+  const ip = (await headers()).get("cf-connecting-ip") ?? "unknown";
+  if (ref && /^[A-Za-z0-9-]{4,80}$/.test(ref) && !(await hit(`verify:ip:${ip}`, LIMITS.verifyIp))) {
+    // Too many checks from this connection: show "not confirmed yet" rather than calling Paystack.
+    state = "pending";
+  } else if (ref && /^[A-Za-z0-9-]{4,80}$/.test(ref)) {
     try {
       state = await verifyCheckout(ref);
     } catch {

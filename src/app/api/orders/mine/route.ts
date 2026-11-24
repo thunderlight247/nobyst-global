@@ -4,57 +4,28 @@
  * Accepts Authorization: Bearer <token> (mobile app) OR session cookie (web).
  */
 import { NextResponse } from "next/server";
+import { corsHeaders } from "@/lib/cors";
 import { listOrdersForUser } from "@/lib/orders";
-import { getEnv } from "@/lib/cloudflare";
-import { sha256Hex, SESSION_COOKIE } from "@/lib/auth";
-import { cookies } from "next/headers";
+import { getUserFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS });
+export async function OPTIONS(request: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(request, "GET, OPTIONS") });
 }
 
+/**
+ * The signed-in account's id, from the mobile app's Bearer token or the website cookie. Uses the
+ * site's central session rules, so a session still waiting for its 2FA code is refused here too.
+ */
 async function resolveUserId(request: Request): Promise<string | null> {
-  const { DB } = await getEnv();
-  const now = new Date().toISOString();
-
-  // 1. Try Bearer token (mobile app)
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7).trim();
-    const tokenHash = await sha256Hex(token);
-    const row = await DB.prepare(
-      "SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?"
-    )
-      .bind(tokenHash, now)
-      .first<{ user_id: string }>();
-    return row?.user_id ?? null;
-  }
-
-  // 2. Fall back to cookie session (web)
-  const jar = await cookies();
-  const cookieToken = jar.get(SESSION_COOKIE)?.value;
-  if (cookieToken) {
-    const tokenHash = await sha256Hex(cookieToken);
-    const row = await DB.prepare(
-      "SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?"
-    )
-      .bind(tokenHash, now)
-      .first<{ user_id: string }>();
-    return row?.user_id ?? null;
-  }
-
-  return null;
+  const user = await getUserFromRequest(request).catch(() => null);
+  return user?.id ?? null;
 }
 
 export async function GET(request: Request) {
+  const CORS = corsHeaders(request, "GET, OPTIONS");
   const userId = await resolveUserId(request);
 
   if (!userId) {

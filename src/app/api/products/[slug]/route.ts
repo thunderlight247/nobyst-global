@@ -2,23 +2,21 @@
  * GET /api/products/[slug]  — single public product
  */
 import { NextResponse } from "next/server";
+import { corsHeaders } from "@/lib/cors";
 import { getProductBySlug } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-};
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS });
+export async function OPTIONS(request: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(request, "GET, OPTIONS") });
 }
 
 export async function GET(
-  _req: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const CORS = corsHeaders(request, "GET, OPTIONS");
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product || product.status !== "live") {

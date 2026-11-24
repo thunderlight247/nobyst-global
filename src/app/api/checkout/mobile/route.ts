@@ -3,56 +3,27 @@
  * Handles mobile checkout with Bearer token authentication & CORS.
  */
 import { NextResponse } from "next/server";
+import { corsHeaders, withCors } from "@/lib/cors";
 import { CheckoutError, createCheckout, type CheckoutInput } from "@/lib/orders";
 import { getEnv } from "@/lib/cloudflare";
 import { parseDelivery } from "@/lib/delivery";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
-import { sha256Hex, SESSION_COOKIE } from "@/lib/auth";
-import { cookies } from "next/headers";
+import { getUserFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS });
+export async function OPTIONS(request: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(request, "POST, OPTIONS") });
 }
 
+/**
+ * The signed-in account's id, from the mobile app's Bearer token or the website cookie. Uses the
+ * site's central session rules, so a session still waiting for its 2FA code is refused here too.
+ */
 async function resolveUserId(request: Request): Promise<string | null> {
-  const { DB } = await getEnv();
-  const now = new Date().toISOString();
-
-  // 1. Try Bearer token from Authorization header (mobile app)
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7).trim();
-    const tokenHash = await sha256Hex(token);
-    const row = await DB.prepare(
-      "SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?"
-    )
-      .bind(tokenHash, now)
-      .first<{ user_id: string }>();
-    return row?.user_id ?? null;
-  }
-
-  // 2. Fall back to cookie (web)
-  const jar = await cookies();
-  const cookieToken = jar.get(SESSION_COOKIE)?.value;
-  if (cookieToken) {
-    const tokenHash = await sha256Hex(cookieToken);
-    const row = await DB.prepare(
-      "SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?"
-    )
-      .bind(tokenHash, now)
-      .first<{ user_id: string }>();
-    return row?.user_id ?? null;
-  }
-
-  return null;
+  const user = await getUserFromRequest(request).catch(() => null);
+  return user?.id ?? null;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -89,6 +60,7 @@ function parseInput(raw: unknown): CheckoutInput | string {
 }
 
 export async function POST(request: Request) {
+  const CORS = corsHeaders(request, "POST, OPTIONS");
   const userId = await resolveUserId(request);
   if (!userId) {
     return NextResponse.json(
@@ -98,9 +70,7 @@ export async function POST(request: Request) {
   }
 
   const limited = await rateLimit([[`checkout:user:${userId}`, LIMITS.checkoutUser]]);
-  if (limited) {
-    return new Response(limited.body, { status: limited.status, headers: { ...CORS, "Content-Type": "application/json" } });
-  }
+  if (limited) return withCors(limited, CORS);
 
   let raw: unknown;
   try {

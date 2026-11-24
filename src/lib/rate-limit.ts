@@ -87,4 +87,7 @@ export const LIMITS = {
   // "Confirm it's you": 5 wrong password/code tries per account per 15 minutes.
   reauthUser: { limit: 5, windowSeconds: 15 * 60 },
   partnerWrite: { limit: 120, windowSeconds: 60 * 60 },
+  // /checkout/verify asks Paystack about a reference; cap it so the page cannot be used to hammer
+  // Paystack's API with our secret key.
+  verifyIp: { limit: 30, windowSeconds: 15 * 60 },
 } satisfies Record<string, Limit>;

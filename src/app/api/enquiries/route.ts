@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { corsHeaders } from "@/lib/cors";
 import { createEnquiry, type EnquiryType } from "@/lib/enquiries";
 import { adminInbox, escapeHtml, publicOrigin, sendEmail } from "@/lib/email";
 import { site } from "@/data/site";
@@ -24,14 +25,9 @@ function cleanBusinessName(value: unknown): string | null {
 
 export const dynamic = "force-dynamic";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS });
+export async function OPTIONS(request: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(request, "POST, OPTIONS") });
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -44,6 +40,7 @@ function text(value: unknown, max: number): string | null {
 }
 
 export async function POST(request: Request) {
+  const CORS = corsHeaders(request, "POST, OPTIONS");
   try {
     const limited = await rateLimit([[`enquiry:ip:${clientIp(request)}`, LIMITS.enquiryIp]]);
     if (limited) return limited;

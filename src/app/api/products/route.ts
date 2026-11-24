@@ -3,20 +3,18 @@
  * Query params: category, q (search term)
  */
 import { NextResponse } from "next/server";
+import { corsHeaders } from "@/lib/cors";
 import { listProducts } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-};
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS });
+export async function OPTIONS(request: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(request, "GET, OPTIONS") });
 }
 
 export async function GET(request: Request) {
+  const CORS = corsHeaders(request, "GET, OPTIONS");
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category") ?? undefined;
   const q = searchParams.get("q")?.toLowerCase() ?? undefined;

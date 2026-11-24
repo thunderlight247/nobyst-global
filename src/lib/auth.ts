@@ -169,8 +169,10 @@ export async function currentSessionHash(): Promise<string | null> {
  * Loads this request's session and account. `pending` is true when the account has 2FA on but
  * this session has not passed the code step yet.
  */
-async function loadSession(): Promise<{ user: CurrentUser; pending: boolean; tokenHash: string } | null> {
-  const tokenHash = await currentSessionHash();
+async function loadSession(
+  explicitTokenHash?: string | null
+): Promise<{ user: CurrentUser; pending: boolean; tokenHash: string } | null> {
+  const tokenHash = explicitTokenHash === undefined ? await currentSessionHash() : explicitTokenHash;
   if (!tokenHash) return null;
   const { DB } = await getEnv();
   const now = Date.now();
@@ -232,6 +234,32 @@ async function loadSession(): Promise<{ user: CurrentUser; pending: boolean; tok
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await loadSession();
   return session && !session.pending ? session.user : null;
+}
+
+/** The session token from an `Authorization: Bearer <token>` header (the mobile app), if any. */
+function bearerToken(request: Request): string | null {
+  const header = request.headers.get("authorization");
+  if (!header || !/^Bearer\s+/i.test(header)) return null;
+  const token = header.replace(/^Bearer\s+/i, "").trim();
+  return token && token.length <= 200 ? token : null;
+}
+
+/**
+ * The signed-in account for an API request from the website (session cookie) or the mobile app
+ * (Bearer token). Both go through the same rules as getCurrentUser: expired sessions, sessions
+ * still waiting for their 2FA code, and the staff session cap all apply.
+ */
+export async function getUserFromRequest(request: Request): Promise<CurrentUser | null> {
+  const token = bearerToken(request);
+  if (!token) return getCurrentUser();
+  const session = await loadSession(await sha256Hex(token));
+  return session && !session.pending ? session.user : null;
+}
+
+/** Ends the session behind this request's Bearer token or cookie. */
+export async function endRequestSession(request: Request): Promise<void> {
+  const token = bearerToken(request) ?? (await cookies()).get(SESSION_COOKIE)?.value;
+  if (token && token.length <= 200) await deleteSession(token);
 }
 
 /** The account whose session has passed the password but still needs its 2FA code, or null. */
