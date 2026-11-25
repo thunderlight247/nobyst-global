@@ -5,13 +5,13 @@ import {
   deleteUnusedMedia,
   getProductById,
   parseProductInput,
-  partnerMediaPrefix,
   updateProduct,
   type Product,
 } from "@/lib/products";
 import { logPartnerProduct, notifyReviewNeeded, statusAfterPartnerSave } from "@/lib/marketplace";
 import { publicOrigin } from "@/lib/email";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { partnerOwnsMedia } from "@/lib/media-upload";
 
 // Partner only. Every handler loads the product and refuses it unless the partner owns it.
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { user, product: previous } = found;
 
   const raw = await request.json().catch(() => null);
-  const parsed = await parseProductInput(raw, { mediaPrefix: partnerMediaPrefix(user.id) });
+  const parsed = await parseProductInput(raw, { ownsMedia: (path) => partnerOwnsMedia(user.id, path) });
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
   const status = statusAfterPartnerSave(user, previous.status);

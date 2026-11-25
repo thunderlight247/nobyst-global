@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { requirePartner } from "@/lib/auth";
-import { createProduct, listPartnerProducts, parseProductInput, partnerMediaPrefix } from "@/lib/products";
+import { createProduct, listPartnerProducts, parseProductInput } from "@/lib/products";
 import { logPartnerProduct, notifyReviewNeeded, statusAfterPartnerSave } from "@/lib/marketplace";
 import { publicOrigin } from "@/lib/email";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { partnerOwnsMedia } from "@/lib/media-upload";
 
 // Partner only. A partner sees and creates only their own products.
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const raw = await request.json().catch(() => null);
-  const parsed = await parseProductInput(raw, { mediaPrefix: partnerMediaPrefix(user.id) });
+  const parsed = await parseProductInput(raw, { ownsMedia: (path) => partnerOwnsMedia(user.id, path) });
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
   try {

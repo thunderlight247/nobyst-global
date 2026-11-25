@@ -8,6 +8,7 @@ import { listInvitations } from "@/lib/invitations";
 import { listCategoryRequests } from "@/lib/marketplace";
 import { listPartnerSummaries } from "@/lib/partner-orders";
 import { listActivity } from "@/lib/activity";
+import { listMediaUploads } from "@/lib/media-upload";
 import { listAllProducts } from "@/lib/products";
 import { listEnquiries } from "@/lib/enquiries";
 import { listPaidOrders, listUnconfirmedOrders } from "@/lib/orders";
@@ -59,7 +60,7 @@ export default async function PayloadAdminPage({
     );
   }
 
-  const [products, enquiries, orders, unconfirmed, categories, content, users, wholesale, invitations, categoryRequests, partners, activity] = await Promise.all([
+  const [products, enquiries, orders, unconfirmed, categories, content, users, wholesale, invitations, categoryRequests, partners, activity, media] = await Promise.all([
     listAllProducts().catch(() => []),
     listEnquiries().catch(() => []),
     listPaidOrders().catch(() => []),
@@ -72,6 +73,7 @@ export default async function PayloadAdminPage({
     listCategoryRequests(),
     listPartnerSummaries(),
     listActivity({ limit: 300 }),
+    listMediaUploads(),
   ]);
 
   const activeCollection = segs?.[0] || "dashboard";
@@ -92,6 +94,7 @@ export default async function PayloadAdminPage({
         initialCategoryRequests={categoryRequests}
         initialPartners={partners}
         initialActivity={activity}
+        initialMedia={media}
         currentUser={{ id: user.id, email: user.email, role: user.role }}
       />
     </main>

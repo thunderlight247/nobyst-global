@@ -238,11 +238,6 @@ function parseModelUrl(value: unknown): string | null {
 }
 
 /** Validates untrusted JSON from the admin form. */
-/** Where a partner's uploads live; partners may only use photos and models from here. */
-export function partnerMediaPrefix(partnerId: string): string {
-  return `${MEDIA_PREFIX}partners/${partnerId}/`;
-}
-
 /**
  * Validates untrusted JSON from the admin form, or from a partner's dashboard when `mediaPrefix`
  * is given: then every photo and 3D model must be one of that partner's own uploads, so a partner
@@ -250,9 +245,9 @@ export function partnerMediaPrefix(partnerId: string): string {
  */
 export async function parseProductInput(
   raw: unknown,
-  options: { mediaPrefix?: string } = {}
+  options: { ownsMedia?: (path: string) => Promise<boolean> } = {}
 ): Promise<{ ok: true; value: ProductInput } | { ok: false; error: string }> {
-  const own = (path: string | null) => !options.mediaPrefix || (path !== null && path.startsWith(options.mediaPrefix));
+  const own = async (path: string | null) => !options.ownsMedia || (path !== null && (await options.ownsMedia(path)));
   if (!raw || typeof raw !== "object") return { ok: false, error: "Invalid request body." };
   const body = raw as Record<string, unknown>;
 
@@ -279,7 +274,7 @@ export async function parseProductInput(
 
   const image = parseImagePath(body.image);
   if (!image) return { ok: false, error: "Upload an image or choose an existing one." };
-  if (!own(image)) return { ok: false, error: "Upload your own product photo." };
+  if (!(await own(image))) return { ok: false, error: "Upload your own product photo." };
 
   const rawGallery = Array.isArray(body.gallery) ? body.gallery : [];
   const gallery = rawGallery
@@ -288,8 +283,9 @@ export async function parseProductInput(
     .filter((p, i, all) => all.indexOf(p) === i);
   if (gallery.length > MAX_GALLERY)
     return { ok: false, error: `Keep the extra photos to ${MAX_GALLERY} or fewer.` };
-  if (rawGallery.some((g) => typeof g === "string" && g.trim() && !own(parseImagePath(g))))
-    return { ok: false, error: "Use only photos you uploaded." };
+  for (const g of rawGallery) {
+    if (typeof g === "string" && g.trim() && !(await own(parseImagePath(g)))) return { ok: false, error: "Use only photos you uploaded." };
+  }
 
   // Blank means the price is shown as "Ask for price" rather than as free.
   const rawPrice = body.price;
@@ -321,7 +317,7 @@ export async function parseProductInput(
   const model3dUrl = parseModelUrl(body.model3dUrl);
   if (typeof body.model3dUrl === "string" && body.model3dUrl.trim() && !model3dUrl)
     return { ok: false, error: "The 3D model must be an uploaded file or an https:// link." };
-  if (model3dUrl && !own(model3dUrl)) return { ok: false, error: "Upload your own 3D model file." };
+  if (model3dUrl && !(await own(model3dUrl))) return { ok: false, error: "Upload your own 3D model file." };
 
   const rawColors = Array.isArray(body.colors) ? body.colors : [];
   const colors = rawColors
@@ -437,7 +433,7 @@ export async function setProductStatus(id: string, status: ProductStatus, note: 
 function mediaKey(path: string): string | null {
   if (!path.startsWith(MEDIA_PREFIX)) return null;
   const key = decodeURIComponent(path.slice(MEDIA_PREFIX.length));
-  return (key.startsWith("products/") || key.startsWith("partners/")) && !key.includes("..") ? key : null;
+  return (key.startsWith("m/") || key.startsWith("products/") || key.startsWith("partners/")) && !key.includes("..") ? key : null;
 }
 
 /**
@@ -458,6 +454,8 @@ async function removeMedia(paths: string[]): Promise<void> {
     if (!used) keys.push(mediaKey(path)!);
   }
   if (keys.length === 0) return;
+  // The register entry goes with the file.
+  for (const key of keys) await DB.prepare("DELETE FROM media_uploads WHERE key = ?").bind(key).run().catch(() => undefined);
   await Promise.all(
     keys.map(async (key) => {
       try {

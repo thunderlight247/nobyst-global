@@ -24,7 +24,7 @@ export interface R2ObjectBody {
 export interface R2Bucket {
   put(
     key: string,
-    value: ArrayBuffer | ReadableStream | Blob,
+    value: ArrayBuffer | ArrayBufferView | ReadableStream | Blob,
     options?: { httpMetadata?: { contentType?: string; cacheControl?: string } }
   ): Promise<unknown>;
   get(key: string): Promise<R2ObjectBody | null>;

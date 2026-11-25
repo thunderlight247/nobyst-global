@@ -35,6 +35,8 @@ import QuoteDialog from "@/components/admin/QuoteDialog";
 import ApprovalsPanel from "@/components/admin/ApprovalsPanel";
 import ActivityPanel from "@/components/admin/ActivityPanel";
 import PartnersPanel from "@/components/admin/PartnersPanel";
+import MediaLibrary from "@/components/admin/MediaLibrary";
+import type { MediaUpload } from "@/lib/media-upload";
 import type { CategoryRequest } from "@/lib/marketplace";
 import type { ActivityEntry } from "@/lib/activity";
 import type { PartnerSummary } from "@/lib/partner-orders";
@@ -68,6 +70,7 @@ type Props = {
   initialCategoryRequests: CategoryRequest[];
   initialPartners: PartnerSummary[];
   initialActivity: ActivityEntry[];
+  initialMedia: MediaUpload[];
   currentUser: { id: string; email: string; role: Role };
 };
 
@@ -85,6 +88,7 @@ export default function PayloadAdminApp({
   initialCategoryRequests,
   initialPartners,
   initialActivity,
+  initialMedia,
   currentUser,
 }: Props) {
   const router = useRouter();
@@ -234,7 +238,7 @@ export default function PayloadAdminApp({
             { id: "approvals", label: "Approvals", icon: CheckSquare, badge: approvalsCount ? `${approvalsCount} waiting` : null },
             { id: "partners", label: "Partner shops", icon: Store, badge: initialPartners.length ? String(initialPartners.length) : null },
             { id: "activity", label: "Activity & security", icon: History, badge: null },
-            { id: "media", label: "Media & 3D Assets", icon: FileBox, badge: models3dCount ? `${models3dCount} 3D` : null },
+            { id: "media", label: "Media library", icon: FileBox, badge: initialMedia.length ? String(initialMedia.length) : null },
           ].map((item) => {
             const Icon = item.icon;
             const active = tab === item.id;
@@ -869,35 +873,7 @@ export default function PayloadAdminApp({
         )}
 
         {/* TAB 5: MEDIA COLLECTION */}
-        {tab === "media" && (
-          <div>
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-royal">Cloudflare R2</span>
-              <h1 className="font-display text-2xl font-extrabold text-navy sm:text-3xl">Media &amp; 3D Storage</h1>
-              <p className="mt-1 text-xs text-navy/60">
-                Connected to bucket <code className="bg-slate-100 px-1 py-0.5 rounded">nobyst-media</code>. All assets served immutable from the edge.
-              </p>
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-navy/10 bg-white p-6 shadow-sm">
-              <h3 className="font-display font-bold text-navy">Asset Types &amp; Limits</h3>
-              <ul className="mt-3 space-y-2 text-xs text-navy/75">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={15} className="text-emerald-600" />
-                  <span>Images: <strong>JPG, PNG, WebP</strong> (optimized up to 6MB)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={15} className="text-emerald-600" />
-                  <span>3D Models: <strong>.GLB, .GLTF</strong> (binary format up to 15MB for fast mobile streaming)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={15} className="text-emerald-600" />
-                  <span>Global Edge Caching: <code>public, max-age=31536000, immutable</code></span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        )}
+        {tab === "media" && <MediaLibrary uploads={initialMedia} />}
       </section>
 
       {quoteFor && (

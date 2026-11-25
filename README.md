@@ -182,8 +182,9 @@ unchanged).
    from 0007, `0013_two_factor.sql` adds two-step sign-in,
    `0014_reauth.sql` the "Confirm it's you" timestamp and `0015_partner_applications.sql`
    automatic invitations and partner status, `0016_marketplace.sql` partner products, order lines
-   per seller, category requests, payouts and the activity log, and `0017_security_log.sql` the
-   security log columns. Until they run, nobody can open the admin or the partner portal.
+   per seller, category requests, payouts and the activity log, `0017_security_log.sql` the
+   security log columns, `0018_email_verification.sql` email confirmation and
+   `0019_media_uploads.sql` the private register of uploaded files. Until they run, nobody can open the admin or the partner portal.
    (`0002` is already part of `schema.sql` on new databases.)
 
 4. **Deploy:** `npm run deploy` (worker name stays `nobyst-global`, so the path structure is
