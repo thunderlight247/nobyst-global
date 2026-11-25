@@ -43,7 +43,7 @@ export default function OrdersPanel({ initialOrders, initialUnconfirmed, onNotif
   );
 
   async function setStatus(order: OrderSummary, status: FulfilmentStatus) {
-    if (status === "cancelled" && !window.confirm(`Cancel order ${order.reference}? The customer is emailed. Refund them in Paystack separately.`)) {
+    if (status === "cancelled" && !window.confirm(`Cancel order ${order.reference}? The customer is emailed. Refund them in your payment provider's dashboard (Hubtel or Paystack) separately.`)) {
       return;
     }
     setBusy(order.id);
@@ -76,7 +76,7 @@ export default function OrdersPanel({ initialOrders, initialUnconfirmed, onNotif
         onNotify(`${order.reference} is paid. It is now in the paid orders list.`);
       } else {
         setUnconfirmed((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: data.result! } : o)));
-        onNotify(`${order.reference}: Paystack says ${data.result === "pending" ? "not paid yet" : "payment failed"}.`);
+        onNotify(`${order.reference}: ${data.result === "pending" ? "not confirmed as paid yet" : "payment failed"}.`);
       }
     } catch (e) {
       onNotify(e instanceof Error ? e.message : "Could not re-check the payment.");
@@ -199,7 +199,7 @@ export default function OrdersPanel({ initialOrders, initialUnconfirmed, onNotif
       <div className="mt-10">
         <h2 className="font-display text-lg font-bold text-navy">Awaiting payment confirmation</h2>
         <p className="mt-1 text-xs text-navy/60">
-          Checkouts and partner quotes from the last 14 days that Paystack has not confirmed. If a
+          Checkouts and partner quotes from the last 14 days that the payment provider has not confirmed. If a
           customer says they paid, re-check here. Most of these are simply abandoned checkouts.
         </p>
         {unconfirmed.length === 0 ? (
@@ -227,7 +227,7 @@ export default function OrdersPanel({ initialOrders, initialUnconfirmed, onNotif
                   className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-navy/5 px-3 font-bold text-navy hover:bg-navy hover:text-white disabled:opacity-60"
                 >
                   <RefreshCw size={13} className={busy === order.id ? "animate-spin" : ""} />
-                  Re-check with Paystack
+                  Re-check payment
                 </button>
               </li>
             ))}

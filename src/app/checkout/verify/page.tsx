@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { verifyCheckout } from "@/lib/orders";
+import { storedPaymentState, verifyCheckout } from "@/lib/orders";
 import { headers } from "next/headers";
 import { hit, LIMITS } from "@/lib/rate-limit";
 import ClearCartOnPaid from "@/components/ClearCartOnPaid";
+import PendingPaymentRefresh from "@/components/PendingPaymentRefresh";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -24,8 +25,9 @@ export default async function VerifyPage({
   let state: "paid" | "failed" | "pending" | "not_found" | "missing" = "missing";
   const ip = (await headers()).get("cf-connecting-ip") ?? "unknown";
   if (ref && /^[A-Za-z0-9-]{4,80}$/.test(ref) && !(await hit(`verify:ip:${ip}`, LIMITS.verifyIp))) {
-    // Too many checks from this connection: show "not confirmed yet" rather than calling Paystack.
-    state = "pending";
+    // Too many checks from this connection: don't ask the provider again, but still show what
+    // our own records say, so a confirmation that arrived by webhook/callback is visible.
+    state = await storedPaymentState(ref);
   } else if (ref && /^[A-Za-z0-9-]{4,80}$/.test(ref)) {
     try {
       state = await verifyCheckout(ref);
@@ -51,9 +53,10 @@ export default async function VerifyPage({
         {paid
           ? `Thank you. Your order reference is ${ref}. We will be in touch about delivery.`
           : state === "pending"
-          ? `Paystack has not confirmed this payment yet. If you completed it, it will be confirmed automatically within a few minutes and you will get an email. Your reference is ${ref}.`
+          ? `Your payment has not been confirmed yet. If you completed it, it will be confirmed automatically within a few minutes and you will get an email. Your reference is ${ref}.`
           : "We could not confirm this payment. If you were charged, contact us with your reference."}
       </p>
+      {state === "pending" && <PendingPaymentRefresh />}
       <Link
         href="/products"
         className="mt-6 inline-flex min-h-[44px] items-center rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-royal"

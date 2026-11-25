@@ -10,7 +10,7 @@ import { adminFetch } from "@/components/admin/reauth";
 const field =
   "mt-1 min-h-[42px] w-full rounded-lg border border-navy/20 bg-white px-3 text-sm text-navy focus:border-royal focus:outline-none focus:ring-2 focus:ring-royal/20";
 
-/** Prices a partner's bulk request and emails them a Paystack payment link. */
+/** Prices a partner's bulk request and emails them a payment link. */
 export default function QuoteDialog({
   enquiry,
   suggestedUnitPesewas,
@@ -57,7 +57,7 @@ export default function QuoteDialog({
             <h2 className="font-display text-xl font-bold text-navy">Send a quote</h2>
             <p className="mt-1 text-xs text-navy/60">
               {enquiry.topic?.replace(/^Partner: /, "") ?? enquiry.name} · {enquiry.productName}. They get an
-              email with a Paystack payment link, and a Pay now button in their portal. Sending again
+              email with a secure payment link, and a Pay now button in their portal. Sending again
               replaces the earlier link.
             </p>
           </div>

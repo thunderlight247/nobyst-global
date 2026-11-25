@@ -49,6 +49,17 @@ export type CloudflareEnv = {
   /** Cloudflare Turnstile: public site key (wrangler var) and secret (wrangler secret). Both unset = off. */
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET_KEY?: string;
+  /** "hubtel" switches new payments to Hubtel (needs the four HUBTEL_* secrets). Default: Paystack. */
+  PAYMENT_PROVIDER?: string;
+  /** Hubtel API ID and API key (Basic auth), merchant account (POS Sales ID). Wrangler secrets. */
+  HUBTEL_CLIENT_ID?: string;
+  HUBTEL_CLIENT_SECRET?: string;
+  HUBTEL_MERCHANT_ACCOUNT?: string;
+  /** Random secret used to sign each order's Hubtel callback URL. Wrangler secret. */
+  HUBTEL_CALLBACK_SECRET?: string;
+  /** Optional fixed-IP relay for Hubtel's Transaction Status API, and its bearer token. */
+  HUBTEL_STATUS_RELAY_URL?: string;
+  HUBTEL_STATUS_RELAY_TOKEN?: string;
 };
 
 /** Bindings from wrangler.jsonc (local miniflare in dev, Workers in production). */

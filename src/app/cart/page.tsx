@@ -2,22 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import CartView from "@/components/CartView";
 import { getCurrentUser } from "@/lib/auth";
+import { getEnv } from "@/lib/cloudflare";
+import { activeProvider, PROVIDER_LABELS } from "@/lib/payments/provider";
 
 export const metadata: Metadata = {
   title: "Cart",
-  description: "Review your NOBYST GLOBAL LTD cart and pay securely with Paystack.",
+  description: "Review your NOBYST GLOBAL LTD cart and pay securely online.",
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function CartPage() {
   const user = await getCurrentUser();
+  const provider = activeProvider(await getEnv());
 
   return (
     <section className="mx-auto max-w-4xl px-5 pb-20 pt-10 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-extrabold text-navy sm:text-4xl">Your cart</h1>
       <p className="mt-2 text-sm text-navy/65">
-        Review your items and check out securely with Paystack.
+        Review your items and check out securely online.
       </p>
 
       {!user && (
@@ -46,6 +49,7 @@ export default async function CartPage() {
         <CartView
           signedIn={Boolean(user)}
           emailVerified={user?.emailVerified ?? false}
+          paymentLabel={provider ? PROVIDER_LABELS[provider] : "our payment partner"}
           defaultName={user?.name}
           defaultEmail={user?.email}
         />

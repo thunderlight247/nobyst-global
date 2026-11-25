@@ -3,6 +3,14 @@ import { getEnv } from "./cloudflare";
 import { describeDelivery, fulfilmentLabel, type DeliveryDetails, type FulfilmentStatus } from "./delivery";
 import { escapeHtml, sendEmail } from "./email";
 import { getProductBySlug } from "./products";
+import { activeProvider } from "./payments/provider";
+import {
+  hubtelCallbackIsFailure,
+  hubtelCallbackIsSuccess,
+  hubtelRelayStatus,
+  startHubtelPayment,
+  type HubtelCallback,
+} from "./payments/hubtel";
 
 const PAYSTACK_API = "https://api.paystack.co";
 
@@ -22,16 +30,40 @@ export type CheckoutInput = {
 
 export class CheckoutError extends Error {}
 
-/** Starts a Paystack transaction for an order already saved as pending. */
+/**
+ * Starts a payment for an order already saved as pending, with the active provider (Hubtel or
+ * Paystack, see payments/provider.ts), and records which provider and checkout it used.
+ */
 async function initializePayment(input: {
   orderId: string;
   reference: string;
   email: string;
   amountPesewas: number;
   origin: string;
+  description: string;
   metadata: Record<string, unknown>;
 }): Promise<string> {
   const env = await getEnv();
+  const provider = activeProvider(env);
+  if (!provider) throw new CheckoutError("Online payment is not configured yet.");
+
+  if (provider === "hubtel") {
+    const started = await startHubtelPayment(env, {
+      reference: input.reference,
+      amountPesewas: input.amountPesewas,
+      description: input.description,
+      origin: input.origin,
+    });
+    if ("error" in started) {
+      await env.DB.prepare("UPDATE orders SET status = 'failed', payment_provider = 'hubtel' WHERE id = ?").bind(input.orderId).run();
+      throw new CheckoutError(started.error);
+    }
+    await env.DB.prepare("UPDATE orders SET payment_url = ?, payment_provider = 'hubtel', provider_checkout_id = ? WHERE id = ?")
+      .bind(started.checkoutUrl, started.checkoutId, input.orderId)
+      .run();
+    return started.checkoutUrl;
+  }
+
   const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
     method: "POST",
     headers: {
@@ -58,10 +90,26 @@ async function initializePayment(input: {
     await env.DB.prepare("UPDATE orders SET status = 'failed' WHERE id = ?").bind(input.orderId).run();
     throw new CheckoutError(body?.message ?? "Could not start payment. Please try again.");
   }
-  await env.DB.prepare("UPDATE orders SET payment_url = ? WHERE id = ?")
+  await env.DB.prepare("UPDATE orders SET payment_url = ?, payment_provider = 'paystack' WHERE id = ?")
     .bind(body.data.authorization_url, input.orderId)
     .run();
   return body.data.authorization_url;
+}
+
+/**
+ * Marks an order paid (or failed). Only the call that actually flips it to paid sends the
+ * confirmation, so a redirect, webhook/callback and admin re-check racing each other email once.
+ */
+async function settleOrder(orderId: string, paid: boolean, transactionId: string | null = null): Promise<void> {
+  const { DB } = await getEnv();
+  const update = await DB.prepare(
+    `UPDATE orders SET status = ?, paid_at = CASE WHEN ? = 'paid' THEN datetime('now') ELSE paid_at END,
+       provider_transaction_id = COALESCE(?, provider_transaction_id)
+     WHERE id = ? AND status != 'paid'`
+  )
+    .bind(paid ? "paid" : "failed", paid ? "paid" : "failed", transactionId, orderId)
+    .run();
+  if (paid && (update.meta?.changes ?? 0) > 0) await sendOrderConfirmation(orderId);
 }
 
 function newReference(orderId: string): string {
@@ -78,7 +126,7 @@ export async function createCheckout(
   userId: string | null = null
 ): Promise<{ authorizationUrl: string; reference: string }> {
   const env = await getEnv();
-  if (!env.PAYSTACK_SECRET_KEY) {
+  if (!activeProvider(env)) {
     throw new CheckoutError("Online payment is not configured yet.");
   }
   if (input.items.length === 0) throw new CheckoutError("Your cart is empty.");
@@ -169,6 +217,7 @@ export async function createCheckout(
     email: input.email,
     amountPesewas: totalPesewas,
     origin,
+    description: `NOBYST GLOBAL order ${reference}`,
     metadata: { customer_name: input.name, phone: input.phone },
   });
   return { authorizationUrl, reference };
@@ -327,19 +376,29 @@ export async function listOpenQuotesForUser(userId: string): Promise<OrderSummar
 }
 
 /**
- * Confirms a transaction with Paystack and marks the matching order as paid.
- * Only Paystack's verify response is trusted; the redirect query string and webhook body are not.
+ * Confirms an order's payment and marks it paid.
+ * - Paystack: asks Paystack's verify API; the redirect query string and webhook body are not trusted.
+ * - Hubtel: the signed callback (recordHubtelCallback) settles the order; this reports the result,
+ *   or asks Hubtel's Status API through the relay when one is configured.
  */
 export async function verifyCheckout(reference: string): Promise<"paid" | "failed" | "pending" | "not_found"> {
   const env = await getEnv();
-  if (!env.PAYSTACK_SECRET_KEY) throw new CheckoutError("Online payment is not configured yet.");
-
-  const order = await env.DB.prepare("SELECT id, status, total_pesewas FROM orders WHERE reference = ?")
+  const order = await env.DB.prepare("SELECT * FROM orders WHERE reference = ?")
     .bind(reference)
-    .first<{ id: string; status: string; total_pesewas: number }>();
+    .first<{ id: string; status: string; total_pesewas: number; payment_provider?: string | null }>();
   if (!order) return "not_found";
   if (order.status === "paid") return "paid";
 
+  if (order.payment_provider === "hubtel") {
+    const relay = await hubtelRelayStatus(env, reference).catch(() => null);
+    if (relay?.paid && relay.amountPesewas !== null && relay.amountPesewas >= order.total_pesewas) {
+      await settleOrder(order.id, true);
+      return "paid";
+    }
+    return order.status === "failed" ? "failed" : "pending";
+  }
+
+  if (!env.PAYSTACK_SECRET_KEY) throw new CheckoutError("Online payment is not configured yet.");
   const res = await fetch(`${PAYSTACK_API}/transaction/verify/${encodeURIComponent(reference)}`, {
     headers: { Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}` },
   });
@@ -359,18 +418,49 @@ export async function verifyCheckout(reference: string): Promise<"paid" | "faile
   if (!paid && (!res.ok || paystackStatus === "ongoing" || paystackStatus === "pending" || paystackStatus === "abandoned" || !paystackStatus)) {
     return "pending";
   }
-
-  // Only the request that flips the order to paid sends the confirmation, so a repeat verify
-  // (redirect, webhook and admin re-check can all race) does not email twice.
-  const update = await env.DB.prepare(
-    "UPDATE orders SET status = ?, paid_at = CASE WHEN ? = 'paid' THEN datetime('now') ELSE paid_at END WHERE id = ? AND status != 'paid'"
-  )
-    .bind(paid ? "paid" : "failed", paid ? "paid" : "failed", order.id)
-    .run();
-
-  if (paid && (update.meta?.changes ?? 0) > 0) await sendOrderConfirmation(order.id);
-
+  await settleOrder(order.id, paid);
   return paid ? "paid" : "failed";
+}
+
+/** An order's payment state from our own records only (no call to the provider). */
+export async function storedPaymentState(reference: string): Promise<"paid" | "failed" | "pending" | "not_found"> {
+  const { DB } = await getEnv();
+  const order = await DB.prepare("SELECT status FROM orders WHERE reference = ?").bind(reference).first<{ status: string }>();
+  if (!order) return "not_found";
+  return order.status === "paid" ? "paid" : order.status === "failed" ? "failed" : "pending";
+}
+
+/**
+ * Applies a Hubtel callback whose URL signature has already been checked. It must echo our
+ * reference and the checkout id Hubtel gave us, report success and cover the order total; with a
+ * relay configured, Hubtel's Status API must agree too. Returns what happened.
+ */
+export async function recordHubtelCallback(
+  reference: string,
+  cb: HubtelCallback
+): Promise<"paid" | "failed" | "ignored" | "mismatch" | "not_found"> {
+  const env = await getEnv();
+  const order = await env.DB.prepare("SELECT * FROM orders WHERE reference = ?")
+    .bind(reference)
+    .first<{ id: string; status: string; total_pesewas: number; payment_provider: string; provider_checkout_id: string | null }>();
+  if (!order || order.payment_provider !== "hubtel") return "not_found";
+  if (order.status === "paid") return "paid";
+  if (cb.clientReference !== reference) return "mismatch";
+  if (order.provider_checkout_id && cb.checkoutId !== order.provider_checkout_id) return "mismatch";
+
+  if (hubtelCallbackIsSuccess(cb)) {
+    if (cb.amountPesewas === null || cb.amountPesewas < order.total_pesewas) return "mismatch";
+    const relay = await hubtelRelayStatus(env, reference).catch(() => ({ paid: false, amountPesewas: null }));
+    // With a relay configured, Hubtel's Status API is the final word (fail closed).
+    if (relay && !(relay.paid && relay.amountPesewas !== null && relay.amountPesewas >= order.total_pesewas)) return "mismatch";
+    await settleOrder(order.id, true, cb.transactionId);
+    return "paid";
+  }
+  if (hubtelCallbackIsFailure(cb)) {
+    await settleOrder(order.id, false);
+    return "failed";
+  }
+  return "ignored";
 }
 
 async function loadOrder(orderId: string): Promise<OrderSummary | null> {
@@ -438,7 +528,7 @@ export async function updateFulfilment(orderId: string, status: FulfilmentStatus
 }
 
 /**
- * Turns a partner's bulk request into a priced order and emails them a Paystack payment link.
+ * Turns a partner's bulk request into a priced order and emails them a payment link.
  * The admin sets the unit price and quantity; the order belongs to the partner's account.
  */
 export async function createPartnerQuote(input: {
@@ -449,7 +539,7 @@ export async function createPartnerQuote(input: {
   origin: string;
 }): Promise<OrderSummary> {
   const env = await getEnv();
-  if (!env.PAYSTACK_SECRET_KEY) throw new CheckoutError("Online payment is not configured yet.");
+  if (!activeProvider(env)) throw new CheckoutError("Online payment is not configured yet.");
 
   const enquiry = await env.DB.prepare(
     `SELECT e.id, e.user_id, e.product_name, e.phone, u.email, u.name, u.company
@@ -509,6 +599,7 @@ export async function createPartnerQuote(input: {
     email: enquiry.email,
     amountPesewas: totalPesewas,
     origin: input.origin,
+    description: `NOBYST GLOBAL quote ${reference}`,
     metadata: { partner: enquiry.company ?? enquiry.name, enquiry_id: enquiry.id },
   });
 
@@ -525,7 +616,7 @@ export async function createPartnerQuote(input: {
 <table style="width:100%;border-collapse:collapse">${itemRows(order)}
 <tr><td style="padding-top:10px;border-top:1px solid #ddd"><strong>Total</strong></td><td style="padding-top:10px;border-top:1px solid #ddd;text-align:right"><strong>${escapeHtml(formatPrice(totalPesewas) ?? "")}</strong></td></tr></table>
 ${input.note ? `<p>${escapeHtml(input.note).replace(/\n/g, "<br>")}</p>` : ""}
-<p><a href="${paymentUrl}" style="display:inline-block;padding:10px 18px;background:#0B1F4B;color:#fff;border-radius:999px;text-decoration:none;font-weight:bold">Pay securely with Paystack</a></p>
+<p><a href="${paymentUrl}" style="display:inline-block;padding:10px 18px;background:#0B1F4B;color:#fff;border-radius:999px;text-decoration:none;font-weight:bold">Pay securely online</a></p>
 <p>You can also pay from your partner portal. Reference: ${escapeHtml(reference)}.</p>`
   );
   return order;

@@ -15,7 +15,7 @@ export type ActivityCategory = "security" | "admin" | "marketplace";
 const RETENTION_MONTHS = 12;
 
 function categoryOf(action: string): ActivityCategory {
-  if (/^(auth|2fa|reauth|user|invite)\./.test(action)) return "security";
+  if (/^(auth|2fa|reauth|user|invite|payment)\./.test(action)) return "security";
   if (/^(product\.admin_|order\.admin|quote|wholesale|category\.admin)/.test(action)) return "admin";
   return "marketplace";
 }

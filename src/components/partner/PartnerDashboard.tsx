@@ -203,7 +203,7 @@ export default function PartnerDashboard(props: Props) {
               <ol className="mt-2 list-decimal space-y-1 pl-5">
                 <li>Add your products with clear photos, a price and stock status. They show as “Sold by {partner.company ?? "you"}”.</li>
                 <li>{trusted ? "Your products go live in the shop straight away." : "Our team reviews new partners' products, usually within one working day."}</li>
-                <li>Customers pay NOBYST securely through Paystack. You see each order here with the delivery details.</li>
+                <li>Customers pay NOBYST securely online (card or mobile money). You see each order here with the delivery details.</li>
                 <li>Deliver the order and mark it delivered. Your earnings (after NOBYST&apos;s {props.commissionBps / 100}% commission) are paid out to you.</li>
               </ol>
               {!readOnly && (

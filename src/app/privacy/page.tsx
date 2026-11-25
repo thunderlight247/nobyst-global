@@ -35,7 +35,7 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-1 pl-5">
           <li><strong>Your account:</strong> name, email address and a scrambled (hashed) form of your password. We never see or store your actual password.</li>
           <li><strong>Orders:</strong> what you buy, the name, email and phone number you give at checkout, and your delivery address or pickup choice.</li>
-          <li><strong>Payments:</strong> processed by Paystack. We receive the payment result and amount; we never receive or store your card or mobile money details.</li>
+          <li><strong>Payments:</strong> processed by Hubtel (and, while we finish moving, Paystack). We receive the payment result and amount; we never receive or store your card or mobile money details.</li>
           <li><strong>Messages:</strong> what you send through our contact, support and partner forms.</li>
           <li><strong>Partners:</strong> business name, contact details, products, sales and the payout details you give us.</li>
           <li><strong>Security records:</strong> sign-ins, failed sign-in attempts and account changes, with the IP address and browser type, to protect accounts from misuse.</li>
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
       <Section title="Who we share it with">
         <ul className="list-disc space-y-1 pl-5">
           <li><strong>Partner sellers:</strong> if you buy a product sold by a partner, that partner receives your name, phone number and delivery details so they can deliver it. They do not see your other items or payment details.</li>
-          <li><strong>Paystack</strong> processes payments; <strong>Resend</strong> delivers our emails; <strong>Cloudflare</strong> hosts the website, database and files and protects them from attacks; <strong>Zoho</strong> hosts our email inbox. They process data only to provide these services to us.</li>
+          <li><strong>Hubtel</strong> and <strong>Paystack</strong> process payments; <strong>Resend</strong> delivers our emails; <strong>Cloudflare</strong> hosts the website, database and files and protects them from attacks; <strong>Zoho</strong> hosts our email inbox. They process data only to provide these services to us.</li>
           <li>Authorities, when the law requires it.</li>
         </ul>
         <p>We do not sell your personal data.</p>

@@ -180,7 +180,7 @@ export default function ProductDetailInteractive({
           <span>{added ? "Added to cart" : "Add to cart"}</span>
         </button>
         <p className="mb-4 mt-2 text-center text-xs text-navy/55" role="status" aria-live="polite">
-          {added ? "Open the cart to check out." : "Pay securely with Paystack in your cart."}
+          {added ? "Open the cart to check out." : "Pay securely online in your cart."}
         </p>
         </>
         )}

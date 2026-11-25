@@ -16,11 +16,14 @@ function lineTotal(item: CartItem): number | null {
 export default function CartView({
   signedIn,
   emailVerified = true,
+  paymentLabel = "our payment partner",
   defaultName = "",
   defaultEmail = "",
 }: {
   signedIn: boolean;
   emailVerified?: boolean;
+  /** Name of the active payment provider, e.g. "Hubtel". */
+  paymentLabel?: string;
   defaultName?: string;
   defaultEmail?: string;
 }) {
@@ -97,7 +100,7 @@ export default function CartView({
       if (!res.ok || !data.authorizationUrl) {
         throw new Error(data.error ?? "Could not start payment. Please try again.");
       }
-      // Paystack hosts the card/mobile-money page; the cart is cleared after confirmation.
+      // The payment provider hosts the card/mobile-money page; the cart is cleared after confirmation.
       window.location.href = data.authorizationUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start payment.");
@@ -302,10 +305,10 @@ export default function CartView({
             disabled={paying || !payable}
             className="inline-flex min-h-[48px] w-full items-center justify-center rounded-full bg-navy px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-royal disabled:opacity-60"
           >
-            {paying ? "Redirecting to Paystack…" : "Pay with Paystack"}
+            {paying ? `Redirecting to ${paymentLabel}…` : `Pay with ${paymentLabel}`}
           </button>
           <p className="text-center text-[11px] text-navy/55">
-            Card and mobile money, processed securely by Paystack.
+            Card and mobile money, processed securely by {paymentLabel}.
           </p>
         </form>
         )}

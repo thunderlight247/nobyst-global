@@ -22,7 +22,7 @@ adding API routes, auth changes, new payment flows or new third-party services.
 | Tokens in localStorage | OK | Website: HttpOnly cookie only (localStorage holds just the cart; prices are always re-read on the server). Mobile app: token in Expo SecureStore (Keychain / Keystore). |
 | Default credentials | OK | No seeded accounts; the first owner is created by hand. |
 | CORS | Fixed | Was `Access-Control-Allow-Origin: *` on the mobile routes. Now only nobyst.com and localhost (Expo web dev) may read them. Native apps ignore CORS and are unaffected. |
-| Webhook signatures | OK | Paystack HMAC-SHA512 verified in constant time, then the transaction is re-checked with Paystack's API and the amount compared. |
+| Webhook signatures | OK | Paystack: HMAC-SHA512 verified in constant time, then the transaction is re-checked with Paystack's API and the amount compared. Hubtel (built, off until its keys are added): callbacks are unsigned, so each order's callback URL carries an HMAC of its reference, and the body must echo our reference and Hubtel's checkout id and cover the total; an optional fixed-IP relay adds Hubtel's Status API as the final word. See `docs/PAYMENTS.md`. |
 | Source maps | OK | No browser source maps are published (checked on the live site). |
 | Production logs | OK | No passwords, tokens or codes are logged. The security log stores emails and IPs for 12 months. |
 | Dependencies | Watch | Production: `postcss` inside Next.js (build-time only, not reachable at run time; fixed by Next 16) and `glob`/`minimatch` inside the OpenNext build tool (build-time only). Dev: vitest upgraded to 5.1 (removed the critical/high findings). |
