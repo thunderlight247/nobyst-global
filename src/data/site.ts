@@ -6,8 +6,8 @@ export const site = {
   location: "Techiman, Ghana",
   region: "Techiman, Bono East Region, Ghana",
   email: "info@nobyst.com",
-  phone: "+233 20 324 5658",
-  whatsapp: "233203245658", // digits only, for wa.me links
+  phone: "+233 50 106 8350",
+  whatsapp: "233501068350", // digits only, for wa.me links
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://nobyst.com",
   positioning:
     "A Ghanaian enterprise based in Techiman, operating today in phone accessories retail and mobile money agency services, and building towards a diversified group.",
